@@ -1,82 +1,67 @@
-import { Sparkles } from "lucide-react";
+import { Heart } from "lucide-react";
+import { useMood } from "@/contexts/MoodContext";
 
 const footerLinks = [
-  { name: "About", href: "#" },
+  { name: "About", href: "#about" },
+  { name: "Stories", href: "#stories" },
   { name: "Privacy", href: "#" },
   { name: "Terms", href: "#" },
-  { name: "Contact", href: "#" },
-];
-
-const socialLinks = [
-  { name: "Twitter", href: "#" },
-  { name: "Instagram", href: "#" },
-  { name: "Discord", href: "#" },
 ];
 
 export function Footer() {
+  const { transitionDuration, colorIntensity } = useMood();
+
   return (
-    <footer className="relative py-16 border-t border-border/50">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-t from-secondary/20 to-transparent" />
+    <footer className="relative py-20 border-t border-white/5">
+      {/* Subtle gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-secondary/10 to-transparent" />
       
       <div className="container mx-auto px-6 relative z-10">
-        <div className="grid md:grid-cols-3 gap-12 md:gap-8">
-          {/* Brand */}
-          <div className="space-y-4">
-            <a href="/" className="flex items-center gap-2 group inline-flex">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow-sm group-hover:shadow-glow transition-all duration-300">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-display text-lg font-semibold tracking-wide">
-                Amora
-              </span>
-            </a>
-            <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
-              Where emotions find their visual voice. Cinematic stories that touch the soul.
-            </p>
-          </div>
+        <div className="flex flex-col items-center text-center space-y-8">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-3 group">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: `linear-gradient(135deg, hsl(350, 70%, ${55 * colorIntensity}%), hsl(320, 65%, ${50 * colorIntensity}%))`,
+                boxShadow: `0 0 30px hsla(350, 70%, 60%, ${0.2 * colorIntensity})`,
+                transition: `all ${transitionDuration}ms`,
+              }}
+            >
+              <Heart className="w-5 h-5 text-white" fill="currentColor" />
+            </div>
+            <span className="font-display text-xl font-semibold tracking-wide text-foreground">
+              Amora
+            </span>
+          </a>
+
+          {/* Poetic tagline */}
+          <p className="text-muted-foreground text-sm max-w-xs leading-relaxed">
+            Where emotions find their visual voice. 
+            <br />
+            A quiet companion for your heart.
+          </p>
 
           {/* Links */}
-          <div className="flex flex-col sm:flex-row gap-8 md:justify-center">
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-foreground">Links</h4>
-              <ul className="space-y-3">
-                {footerLinks.map((link) => (
-                  <li key={link.name}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
-                    >
-                      {link.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="flex flex-wrap justify-center gap-6">
+            {footerLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.href}
+                className="text-sm text-muted-foreground hover:text-foreground"
+                style={{ transition: `color ${transitionDuration}ms` }}
+              >
+                {link.name}
+              </a>
+            ))}
           </div>
 
-          {/* Social */}
-          <div className="space-y-4 md:text-right">
-            <h4 className="text-sm font-medium text-foreground">Follow Us</h4>
-            <div className="flex gap-4 md:justify-end">
-              {socialLinks.map((link) => (
-                <a
-                  key={link.name}
-                  href={link.href}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors duration-300"
-                >
-                  {link.name}
-                </a>
-              ))}
-            </div>
+          {/* Copyright */}
+          <div className="pt-8">
+            <p className="text-xs text-muted-foreground/60">
+              © {new Date().getFullYear()} Amora. Made with feeling.
+            </p>
           </div>
-        </div>
-
-        {/* Copyright */}
-        <div className="mt-16 pt-8 border-t border-border/30 text-center">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Amora. All rights reserved.
-          </p>
         </div>
       </div>
     </footer>

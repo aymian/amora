@@ -1,34 +1,78 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { Compass } from "lucide-react";
+import { useMood } from "@/contexts/MoodContext";
 
 export function CTASection() {
+  const { transitionDuration, colorIntensity, motionSpeed } = useMood();
+
   return (
-    <section className="relative py-32 overflow-hidden">
-      {/* Background with Noise */}
-      <div className="absolute inset-0 bg-gradient-to-b from-secondary/30 via-primary/5 to-background noise-overlay" />
+    <section className="relative py-40 overflow-hidden">
+      {/* Background with animated gradient */}
+      <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse at 50% 50%, hsla(350, 70%, 50%, ${0.08 * colorIntensity}), transparent 70%)`,
+          }}
+        />
+      </div>
       
-      {/* Ambient Glows */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/15 rounded-full blur-[150px] animate-pulse-glow" />
-      <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1s' }} />
+      {/* Floating ambient orbs */}
+      <div 
+        className="absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full blur-[150px]"
+        style={{
+          background: `hsla(350, 70%, 50%, ${0.1 * colorIntensity})`,
+          animation: `breathe ${8 / motionSpeed}s ease-in-out infinite`,
+        }}
+      />
+      <div 
+        className="absolute bottom-1/4 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px]"
+        style={{
+          background: `hsla(280, 60%, 45%, ${0.08 * colorIntensity})`,
+          animation: `breathe ${10 / motionSpeed}s ease-in-out infinite 2s`,
+        }}
+      />
       
       <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          {/* Main Headline */}
+        <div className="max-w-3xl mx-auto text-center space-y-10">
+          {/* Quiet, poetic headline */}
           <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-light leading-[1.1]">
-            Step Into a World of{" "}
-            <span className="text-gradient-primary font-medium">Visual Stories</span>
+            <span className="text-foreground/80">A quiet place</span>
+            <br />
+            <span 
+              className="font-medium"
+              style={{
+                background: `linear-gradient(135deg, hsl(350, 70%, ${65 * colorIntensity}%), hsl(320, 65%, ${60 * colorIntensity}%))`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              for your feelings
+            </span>
           </h2>
           
-          {/* Subtext */}
-          <p className="text-xl sm:text-2xl text-muted-foreground font-light max-w-xl mx-auto">
-            Feel more. See more. Experience beauty.
+          {/* Minimal subtext */}
+          <p 
+            className="text-xl text-muted-foreground font-light max-w-md mx-auto"
+            style={{ opacity: 0.8 }}
+          >
+            Stories that listen. Visuals that understand. A space that feels like home.
           </p>
           
-          {/* CTA Button */}
-          <div className="pt-4">
-            <Button variant="premium" size="xl" className="group">
-              Start Exploring
-              <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+          {/* Single calm CTA */}
+          <div className="pt-6">
+            <Button 
+              variant="premium" 
+              size="xl" 
+              className="group gap-3"
+            >
+              <Compass 
+                className="w-5 h-5" 
+                style={{ 
+                  transition: `transform ${transitionDuration}ms`,
+                }}
+              />
+              Begin Your Journey
             </Button>
           </div>
         </div>

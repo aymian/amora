@@ -1,68 +1,141 @@
 import { Button } from "@/components/ui/button";
-import { Play, ArrowRight } from "lucide-react";
-import { HeroCards } from "@/components/hero/HeroCards";
+import { Play, Compass } from "lucide-react";
+import { useMood } from "@/contexts/MoodContext";
+import { useState, useEffect } from "react";
 
 export function HeroSection() {
+  const { transitionDuration, colorIntensity, motionSpeed } = useMood();
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 30;
+      const y = (e.clientY / window.innerHeight - 0.5) * 30;
+      setMousePosition({ x, y });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-secondary/20" />
-      
-      {/* Ambient Glow */}
-      <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px] animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1.5s' }} />
-      
-      <div className="container mx-auto px-6 py-32 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          {/* Left Content */}
-          <div className="space-y-8 animate-fade-up">
-            <div className="space-y-6">
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-light leading-[1.1] tracking-tight">
-                <span className="block">Feel Stories</span>
-                <span className="block text-gradient-primary font-medium">
-                  Like Never Before
-                </span>
-              </h1>
-              
-              <p className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed font-light">
-                Immerse yourself in cinematic visual journeys crafted to evoke 
-                emotion, wonder, and deep connection.
-              </p>
-            </div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Ambient Glow Effects */}
+      <div 
+        className="absolute w-[800px] h-[800px] rounded-full blur-[200px]"
+        style={{
+          top: "20%",
+          left: "30%",
+          background: `radial-gradient(circle, hsla(350, 70%, 50%, ${0.15 * colorIntensity}), transparent 70%)`,
+          transform: `translate(${mousePosition.x * 0.5}px, ${mousePosition.y * 0.5}px)`,
+          transition: `transform ${transitionDuration * 2}ms ease-out`,
+        }}
+      />
+      <div 
+        className="absolute w-[600px] h-[600px] rounded-full blur-[180px]"
+        style={{
+          bottom: "10%",
+          right: "20%",
+          background: `radial-gradient(circle, hsla(280, 60%, 45%, ${0.1 * colorIntensity}), transparent 70%)`,
+          transform: `translate(${-mousePosition.x * 0.3}px, ${-mousePosition.y * 0.3}px)`,
+          transition: `transform ${transitionDuration * 2}ms ease-out`,
+        }}
+      />
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4 pt-4">
-              <Button variant="hero-primary" size="lg" className="group">
-                Explore Stories
-                <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </Button>
-              <Button variant="hero" size="lg" className="group">
-                <Play className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                Watch Preview
-              </Button>
-            </div>
-
-            {/* Social Proof */}
-            <div className="flex items-center gap-6 pt-6">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary to-muted border-2 border-background"
-                    style={{ zIndex: 5 - i }}
-                  />
-                ))}
-              </div>
-              <div className="text-sm">
-                <span className="text-foreground font-medium">50K+</span>{" "}
-                <span className="text-muted-foreground">dreamers exploring</span>
-              </div>
-            </div>
+      <div className="container mx-auto px-6 relative z-10">
+        <div className="max-w-4xl mx-auto text-center space-y-10">
+          {/* Tagline */}
+          <div 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass"
+            style={{
+              animation: `fadeUp 0.8s ease-out forwards`,
+              opacity: 0,
+            }}
+          >
+            <span 
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ background: `hsl(350, 70%, ${60 * colorIntensity}%)` }}
+            />
+            <span className="text-sm text-muted-foreground">A quiet space for your emotions</span>
           </div>
 
-          {/* Right Content - Hero Cards */}
-          <div className="relative lg:h-[600px] animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            <HeroCards />
+          {/* Main Headline */}
+          <h1 
+            className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-light leading-[1.05] tracking-tight"
+            style={{
+              animation: `fadeUp 1s ease-out 0.1s forwards`,
+              opacity: 0,
+            }}
+          >
+            <span className="block text-foreground/90">Stories that</span>
+            <span 
+              className="block font-medium"
+              style={{
+                background: `linear-gradient(135deg, hsl(350, 70%, ${65 * colorIntensity}%), hsl(320, 65%, ${60 * colorIntensity}%))`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              feel like you
+            </span>
+          </h1>
+
+          {/* Poetic Subtext */}
+          <p 
+            className="text-lg sm:text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed font-light"
+            style={{
+              animation: `fadeUp 1s ease-out 0.2s forwards`,
+              opacity: 0,
+            }}
+          >
+            Let visuals speak to your heart. Discover cinematic moments 
+            crafted for the way you feel right now.
+          </p>
+
+          {/* CTA Buttons */}
+          <div 
+            className="flex flex-wrap justify-center gap-5 pt-6"
+            style={{
+              animation: `fadeUp 1s ease-out 0.3s forwards`,
+              opacity: 0,
+            }}
+          >
+            <Button 
+              variant="premium" 
+              size="xl" 
+              className="group gap-3"
+            >
+              <Compass className="w-5 h-5 transition-transform group-hover:rotate-45" style={{ transitionDuration: `${transitionDuration}ms` }} />
+              Begin Exploring
+            </Button>
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="group gap-3"
+            >
+              <Play className="w-5 h-5 transition-transform group-hover:scale-110" style={{ transitionDuration: `${transitionDuration}ms` }} fill="currentColor" />
+              Watch a Story
+            </Button>
+          </div>
+
+          {/* Quiet indicator */}
+          <div 
+            className="pt-16"
+            style={{
+              animation: `fadeUp 1s ease-out 0.5s forwards`,
+              opacity: 0,
+            }}
+          >
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-xs text-muted-foreground/60 uppercase tracking-widest">Scroll to discover</span>
+              <div 
+                className="w-px h-12"
+                style={{
+                  background: `linear-gradient(180deg, hsl(350, 70%, ${50 * colorIntensity}%), transparent)`,
+                  animation: `breathe ${3 / motionSpeed}s ease-in-out infinite`,
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
