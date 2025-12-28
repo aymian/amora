@@ -87,6 +87,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
     const [allArtifacts, setAllArtifacts] = useState<any[]>([]);
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
     useEffect(() => {
         if (!user?.id) return;
@@ -102,6 +103,37 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             // Client-side sort to avoid index requirements temporarily
             fetched.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
             setNotifications(fetched);
+        });
+
+        return () => unsub();
+    }, [user?.id]);
+
+    // Fetch unread message count
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const q = query(
+            collection(db, "conversations"),
+            where("participants", "array-contains", user.id)
+        );
+
+        const unsub = onSnapshot(q, async (snapshot) => {
+            let totalUnread = 0;
+
+            for (const convDoc of snapshot.docs) {
+                const convData = convDoc.data();
+                const messagesRef = collection(db, `conversations/${convDoc.id}/messages`);
+                const messagesSnap = await getDocs(messagesRef);
+
+                const unreadInConv = messagesSnap.docs.filter(msgDoc => {
+                    const msg = msgDoc.data();
+                    return msg.senderId !== user.id && !msg.read;
+                }).length;
+
+                totalUnread += unreadInConv;
+            }
+
+            setUnreadMessageCount(totalUnread);
         });
 
         return () => unsub();
@@ -603,9 +635,14 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         {(user?.plan === 'pro' || user?.plan === 'elite' || user?.plan === 'creator') && (
                             <button
                                 onClick={() => navigate("/messages")}
-                                className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
+                                className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
                             >
                                 <MessageSquare className="w-5 h-5 transition-transform group-hover:scale-110" />
+                                {unreadMessageCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#e9c49a] text-black text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(233,196,154,0.4)] animate-pulse">
+                                        {unreadMessageCount}
+                                    </span>
+                                )}
                             </button>
                         )}
 
