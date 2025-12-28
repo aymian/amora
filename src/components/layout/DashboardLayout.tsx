@@ -27,6 +27,7 @@ import {
     Download,
     Sparkles,
     MessageSquare,
+    Send,
     PieChart,
     Rocket,
     Film,
@@ -637,7 +638,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                 onClick={() => navigate("/messages")}
                                 className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
                             >
-                                <MessageSquare className="w-5 h-5 transition-transform group-hover:scale-110" />
+                                <Send className="w-5 h-5 transition-transform group-hover:scale-110" />
                                 {unreadMessageCount > 0 && (
                                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#e9c49a] text-black text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(233,196,154,0.4)] animate-pulse">
                                         {unreadMessageCount}

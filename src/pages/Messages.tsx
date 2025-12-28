@@ -25,7 +25,9 @@ import {
     addDoc,
     serverTimestamp,
     setDoc,
-    getDocs
+    getDocs,
+    updateDoc,
+    writeBatch
 } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -123,6 +125,32 @@ export default function Messages() {
 
         return () => unsub();
     }, [activeChat?.id]);
+
+    // Mark messages as read when viewing conversation
+    useEffect(() => {
+        if (!activeChat?.id || !userData?.id) return;
+
+        const markAsRead = async () => {
+            try {
+                const messagesRef = collection(db, `conversations/${activeChat.id}/messages`);
+                const q = query(messagesRef, where("senderId", "!=", userData.id));
+                const snapshot = await getDocs(q);
+                
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(msgDoc => {
+                    if (!msgDoc.data().read) {
+                        batch.update(msgDoc.ref, { read: true });
+                    }
+                });
+                
+                await batch.commit();
+            } catch (error) {
+                console.error("Mark as read failed:", error);
+            }
+        };
+
+        markAsRead();
+    }, [activeChat?.id, userData?.id]);
 
     const handleSelectUser = async (user: any) => {
         setSearchQuery("");
