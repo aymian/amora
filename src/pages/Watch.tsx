@@ -58,49 +58,67 @@ export default function Watch() {
         return () => unsubscribe();
     }, []);
 
-    // 2. Data Fetcher & Navigation Reset
+    // 2. Directorial Metadata Sync (Title)
     useEffect(() => {
-        window.scrollTo(0, 0);
+        if (videoData?.title) {
+            const cleanTitle = videoData.title.toLowerCase().replace(/\s+/g, '_');
+            document.title = `${cleanTitle}.artifact | Amora Theater`;
+        }
+    }, [videoData]);
+
+    // 3. Data Fetcher & Navigation Reset
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch Active Artifact
                 if (artifactId) {
-                    // Try gallery_videos first
                     let artDoc = await getDoc(doc(db, "gallery_videos", artifactId));
                     if (!artDoc.exists()) {
-                        // Fallback to images if needed (legacy support)
                         artDoc = await getDoc(doc(db, "gallery_images", artifactId));
                     }
 
                     if (artDoc.exists()) {
-                        setVideoData(artDoc.data());
+                        setVideoData({ id: artDoc.id, ...artDoc.data() });
                     } else {
-                        // Global Hero Fallback
                         const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                        if (heroDoc.exists()) setVideoData(heroDoc.data());
+                        if (heroDoc.exists()) setVideoData({ id: 'hero', ...heroDoc.data() });
                     }
                 } else {
                     const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                    if (heroDoc.exists()) setVideoData(heroDoc.data());
+                    if (heroDoc.exists()) setVideoData({ id: 'hero', ...heroDoc.data() });
                 }
 
-                // Fetch Next Sequences
                 const q = query(collection(db, "gallery_videos"), limit(12));
                 const querySnapshot = await getDocs(q);
                 setNextSequences(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
             } catch (error) {
                 console.error("Theater Fetch Error:", error);
             } finally {
                 setLoading(false);
-                setPlaying(true); // Reset playback state for new video
             }
         };
 
         fetchData();
     }, [artifactId]);
+
+    // 4. Playback Pulse (YouTube-style transition)
+    useEffect(() => {
+        if (!loading && videoRef.current) {
+            const playVideo = async () => {
+                try {
+                    videoRef.current?.load();
+                    await videoRef.current?.play();
+                    setPlaying(true);
+                } catch (err) {
+                    console.warn("Autoplay transition restricted:", err);
+                    setPlaying(false);
+                }
+            };
+            playVideo();
+        }
+    }, [loading, videoData?.videoUrl]);
 
     const handleTogglePlay = () => {
         if (videoRef.current) {
