@@ -44,6 +44,7 @@ import {
     ShieldAlert,
     User,
     HelpCircle,
+    Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -207,10 +208,10 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             const maxPossible = 25 * 60 * 60 * 1000; // 25 hours max
             const diff = target - now;
 
-            if (!phase || !targetStr || now > target || diff > maxPossible || (phase === 'access' && diff > 20 * 1000)) {
+            if (!phase || !targetStr || now > target || diff > maxPossible || (phase === 'access' && diff > 5 * 60 * 60 * 1000)) {
                 // Determine next phase
                 const newPhase = phase === 'access' ? 'upgrade' : 'access';
-                const duration = newPhase === 'access' ? 20 * 1000 : 24 * 60 * 60 * 1000;
+                const duration = newPhase === 'access' ? 5 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
 
                 phase = newPhase;
                 target = Date.now() + duration;
@@ -229,9 +230,10 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
     }, [user?.plan]);
 
     const formatTime = (seconds: number) => {
-        const m = Math.floor(seconds / 60);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
-        return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
     // Keyboard shortcut for search
@@ -342,8 +344,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     {
                         label: "Experience",
                         items: [
-                            { icon: Smile, label: "Mood Feed", path: "/mood", locked: true },
-                            { icon: Sparkles, label: "Exclusive Stories", path: "/exclusive", locked: true },
+                            { icon: Smile, label: "Moods", path: "/moods", locked: true },
+                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
+                            { icon: Sparkles, label: "Exclusive Stories", path: "/moods", locked: true },
                         ]
                     },
                     {
@@ -376,7 +379,8 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     {
                         label: "Experience",
                         items: [
-                            { icon: Smile, label: "Mood Feed (Manual)", path: "/mood" },
+                            { icon: Smile, label: "Moods", path: "/moods" },
+                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
                     },
                     {
@@ -413,6 +417,8 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         label: "Experience",
                         items: [
                             { icon: Brain, label: "Emotion AI 🧠", path: "/emotion-ai" },
+                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
+                            { icon: Smile, label: "Moods", path: "/moods" },
                             { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
                         ]
                     },
@@ -438,12 +444,14 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         label: "Creator Studio",
                         items: [
                             { icon: LayoutGrid, label: "Dashboard", path: "/dashboard" },
-                            { icon: PlusSquare, label: "Upload Content", path: "/upload" },
-                            { icon: Video, label: "Create Short", path: "/create-short" },
+                            { icon: PlusSquare, label: "Explore Images", path: "/images" },
+                            { icon: Video, label: "Short-videos", path: "/short-videos" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
                             { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },
+                            { icon: Smile, label: "Moods", path: "/moods" },
+                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
                     },
                     {

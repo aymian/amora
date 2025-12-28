@@ -22,6 +22,8 @@ import UserProfile from "./pages/UserProfile";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import CreateShort from "./pages/admin/CreateShort";
+import Moods from "./pages/Moods";
+import AIGuide from "./pages/AIGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,8 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/create-short" element={<CreateShort />} />
+          <Route path="/moods" element={<Moods />} />
+          <Route path="/ai" element={<AIGuide />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -28,13 +28,31 @@ export default function CreateShort() {
     };
 
     const uploadToCloudinary = async (file: File): Promise<string> => {
+        // Use signed upload with same credentials as MediaUpload
+        const cloudName = 'dwm2smxdk';
+        const apiKey = '229614895851864';
+        const apiSecret = '7F_je2wrqmJO6nasNJZqb0uwmhU';
+        const timestamp = Math.round(new Date().getTime() / 1000);
+
+        // Parameters to sign (must be sorted alphabetically)
+        const paramString = `folder=amora_shorts&timestamp=${timestamp}${apiSecret}`;
+
+        // Generate SHA-1 Signature using browser crypto
+        const encoder = new TextEncoder();
+        const data = encoder.encode(paramString);
+        const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("upload_preset", "amora_videos");
-        formData.append("cloud_name", "dv3qbj0bn");
+        formData.append("api_key", apiKey);
+        formData.append("timestamp", timestamp.toString());
+        formData.append("signature", signature);
+        formData.append("folder", "amora_shorts");
 
         const response = await fetch(
-            "https://api.cloudinary.com/v1_1/dv3qbj0bn/video/upload",
+            `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
             {
                 method: "POST",
                 body: formData,
@@ -42,12 +60,14 @@ export default function CreateShort() {
         );
 
         if (!response.ok) {
-            throw new Error("Cloudinary upload failed");
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || "Cloudinary upload failed");
         }
 
-        const data = await response.json();
-        return data.secure_url;
+        const result = await response.json();
+        return result.secure_url;
     };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
