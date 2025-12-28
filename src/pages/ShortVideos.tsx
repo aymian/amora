@@ -31,12 +31,19 @@ interface VideoArtifact {
 
 const VideoItem = ({ video, isActive }: { video: VideoArtifact, isActive: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
 
     useEffect(() => {
-        if (isActive) {
-            videoRef.current?.play().catch(() => { });
+        if (isActive && videoRef.current) {
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    // Browser blocked unmuted autoplay, fallback to muted
+                    setIsMuted(true);
+                    videoRef.current?.play().catch(e => console.error("Playback failed:", e));
+                });
+            }
         } else {
             videoRef.current?.pause();
         }
