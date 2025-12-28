@@ -1,0 +1,109 @@
+admin page it is /manager   so Senior Full-Stack Engineer & Creative Director. OBJECTIVE: Build the "AMORA Admin Nexus" — a premium, cinematic administrative gateway for an exclusive content platform.
+
+CORE STACK:
+
+Frontend: React.js, Tailwind CSS (Glassmorphism), Framer Motion.
+
+Backend/Auth: Firebase (for roles and authentication).
+
+Storage: Supabase (for manual payment screenshots and content media).
+
+PRIMARY TASK: THE ADMIN GATEWAY
+
+AUTHENTICATION LAYER: Create a login form restricted to a single master admin.
+
+CREDENTIALS: Username: amora2050 | Password: yves
+
+
+VISUAL AESTHETIC:
+
+Theme: "Deep Space" Dark Mode (Background: #050505).
+
+UI Elements: Glassmorphism cards with backdrop-blur-xl and border-white/10.
+
+Typography: Minimalist, wide-tracked headers (Cinematic style).
+
+Motion: Subtle ambient particle background (Three.js or CSS) and soft fade-in transitions.
+
+TECHNICAL IMPLEMENTATION (THE CODE)
+1. The Login Component (AdminLogin.js)
+This is the entry point for the Admin. It uses the specific credentials you provided.
+
+JavaScript
+
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+
+const AdminLogin = () => {
+  const [form, setForm] = useState({ user: '', pass: '' });
+  const [status, setStatus] = useState(null);
+
+  const handleEntry = (e) => {
+    e.preventDefault();
+    // THE MASTER KEY
+    if (form.user === 'amora2050' && form.pass === 'yves') {
+      setStatus('authorized');
+      localStorage.setItem('amora_admin_token', 'session_active_2050');
+      window.location.href = '/admin/dashboard';
+    } else {
+      setStatus('denied');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center font-sans overflow-hidden relative">
+      {/* Cinematic Ambient Glow */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
+
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="z-10 w-full max-w-sm p-10 bg-white/5 border border-white/10 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+      >
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-extralight tracking-[0.3em] text-white uppercase">AMORA</h1>
+          <p className="text-gray-500 text-[10px] tracking-widest mt-2 uppercase">Nexus Command</p>
+        </div>
+
+        <form onSubmit={handleEntry} className="space-y-6">
+          <div className="space-y-1">
+            <label className="text-[10px] text-gray-500 uppercase tracking-tighter ml-1">Admin ID</label>
+            <input 
+              type="text"
+              className="w-full bg-black/50 border border-white/5 rounded-xl px-4 py-3 text-white focus:border-white/20 outline-none transition-all"
+              onChange={(e) => setForm({...form, user: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] text-gray-500 uppercase tracking-tighter ml-1">Access Key</label>
+            <input 
+              type="password"
+              className="w-full bg-black/50 border border-white/5 rounded-xl px-4 py-3 text-white focus:border-white/20 outline-none transition-all"
+              onChange={(e) => setForm({...form, pass: e.target.value})}
+            />
+          </div>
+
+          {status === 'denied' && (
+            <p className="text-red-500 text-[11px] text-center animate-pulse tracking-wide">ACCESS DENIED: INVALID KEY</p>
+          )}
+
+          <button className="w-full bg-white text-black py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-all shadow-white/5 shadow-lg">
+            Initialize Session
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export default AdminLogin;
+2. The Next Step: Admin Dashboard Layout
+Once the admin enters, they will see the Admin Sidebar you defined.
+
+Top Bar: System Status (Supabase/Firebase Online).
+
+Primary Action: "Pending Payments" (A blinking red dot if a screenshot is waiting).
+
+Media Center: Upload button for new manual content.

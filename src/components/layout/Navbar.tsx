@@ -1,121 +1,82 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, Menu, X } from "lucide-react";
+import { Menu, X, Sparkles } from "lucide-react";
 import { useMood } from "@/contexts/MoodContext";
+import { Logo } from "@/components/brand/Logo";
 
 const navLinks = [
-  { name: "Discover", href: "#discover" },
-  { name: "Stories", href: "#stories" },
-  { name: "Feelings", href: "#mood" },
-  { name: "About", href: "#about" },
+  { name: "Explore", href: "#" },
+  { name: "Stories", href: "#stories", active: true },
+  { name: "Mood", href: "#mood" },
+  { name: "Creators", href: "#" },
 ];
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { transitionDuration, colorIntensity } = useMood();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const { transitionDuration } = useMood();
 
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50`}
-        style={{
-          transition: `all ${transitionDuration}ms ease-out`,
-          background: isScrolled 
-            ? `hsla(240, 15%, 6%, 0.85)` 
-            : "transparent",
-          backdropFilter: isScrolled ? "blur(20px)" : "none",
-          borderBottom: isScrolled ? "1px solid hsla(0, 0%, 100%, 0.05)" : "none",
-          padding: isScrolled ? "0.75rem 0" : "1.5rem 0"
-        }}
+        className="fixed top-6 left-0 right-0 z-50 flex justify-center px-6"
+        style={{ transition: `all ${transitionDuration}ms ease-out` }}
       >
-        <div className="container mx-auto px-6 flex items-center justify-between">
+        <div
+          className="w-full max-w-6xl flex items-center justify-between px-6 md:px-8 py-3 rounded-[20px] bg-[#1a1c23]/40 backdrop-blur-xl border border-[#e9c49a]/20 shadow-2xl"
+          style={{
+            boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.8)",
+          }}
+        >
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3 group">
-            <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center relative overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, hsl(350, 70%, ${55 * colorIntensity}%), hsl(320, 65%, ${50 * colorIntensity}%))`,
-                boxShadow: `0 0 30px hsla(350, 70%, 60%, ${0.3 * colorIntensity})`,
-                transition: `all ${transitionDuration}ms`
-              }}
-            >
-              <Heart className="w-5 h-5 text-white" fill="currentColor" />
-              {/* Subtle pulse animation */}
-              <div 
-                className="absolute inset-0 bg-white/20 animate-pulse-glow"
-                style={{ opacity: 0.3 }}
-              />
-            </div>
-            <span 
-              className="font-display text-2xl font-semibold tracking-wide"
-              style={{
-                background: `linear-gradient(135deg, hsl(0, 0%, 95%), hsl(350, 70%, 80%))`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Amora
-            </span>
+          <a href="/" className="group flex-shrink-0">
+            <Logo size="sm" />
           </a>
 
-          {/* Center Navigation - Desktop */}
+          {/* Navigation - Desktop */}
           <div className="hidden lg:flex items-center gap-10">
-            {navLinks.map((link) => (
+            {navLinks.map((link, i) => (
               <a
-                key={link.name}
+                key={`${link.name}-${i}`}
                 href={link.href}
-                className="relative text-sm font-medium text-muted-foreground hover:text-foreground group"
-                style={{ transition: `color ${transitionDuration}ms` }}
+                className={`relative text-[13px] font-normal tracking-[0.05em] transition-colors ${link.active ? "text-white" : "text-white/60 hover:text-white"
+                  }`}
               >
                 {link.name}
-                <span 
-                  className="absolute -bottom-1 left-0 w-0 h-[2px] group-hover:w-full"
-                  style={{
-                    background: `linear-gradient(90deg, hsl(350, 70%, 60%), hsl(320, 65%, 55%))`,
-                    transition: `width ${transitionDuration}ms ease-out`
-                  }}
-                />
+                {link.active && (
+                  <span
+                    className="absolute -bottom-1.5 left-0 w-full h-[1px] bg-[#e9c49a]"
+                  />
+                )}
               </a>
             ))}
           </div>
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="hidden sm:inline-flex text-muted-foreground hover:text-foreground hover:bg-white/5"
+            <Button
+              variant="ghost"
+              className="hidden sm:flex text-white/70 hover:text-white hover:bg-white/5 text-[13px] font-light"
+              onClick={() => navigate("/login")}
             >
               Sign In
             </Button>
-            <Button 
-              variant="premium" 
-              size="sm"
-              className="hidden sm:inline-flex"
+            <Button
+              className="hidden sm:flex h-10 px-6 rounded-lg bg-gradient-to-r from-[#8b6544] to-[#4a2c2a] text-white border border-[#e9c49a]/30 text-[13px] font-light shadow-lg hover:shadow-[#8b6544]/20 transition-all"
             >
-              Begin Journey
+              Start trial
             </Button>
-            
+
             {/* Mobile Menu Button */}
             <button
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/5"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              style={{ transition: `background ${transitionDuration}ms` }}
             >
               {isMobileMenuOpen ? (
-                <X className="w-5 h-5 text-foreground" />
+                <X className="w-5 h-5 text-white" />
               ) : (
-                <Menu className="w-5 h-5 text-foreground" />
+                <Menu className="w-5 h-5 text-white" />
               )}
             </button>
           </div>
@@ -123,42 +84,40 @@ export function Navbar() {
       </nav>
 
       {/* Mobile Menu */}
-      <div 
-        className={`fixed inset-0 z-40 lg:hidden`}
-        style={{
-          opacity: isMobileMenuOpen ? 1 : 0,
-          pointerEvents: isMobileMenuOpen ? "auto" : "none",
-          transition: `opacity ${transitionDuration}ms`
-        }}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden pointer-events-none transition-opacity duration-300 ${isMobileMenuOpen ? "opacity-100" : "opacity-0"}`}
       >
-        <div 
-          className="absolute inset-0 bg-background/95 backdrop-blur-xl"
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
           onClick={() => setIsMobileMenuOpen(false)}
         />
-        <div 
-          className="absolute top-20 left-6 right-6 p-6 rounded-2xl glass-strong"
-          style={{
-            transform: isMobileMenuOpen ? "translateY(0)" : "translateY(-20px)",
-            transition: `transform ${transitionDuration}ms ease-out`
-          }}
+        <div
+          className={`absolute top-28 left-6 right-6 p-8 rounded-2xl bg-[#1a1c23] border border-[#e9c49a]/20 shadow-2xl pointer-events-auto transition-transform duration-500 ${isMobileMenuOpen ? "translate-y-0" : "-translate-y-10"}`}
         >
-          <div className="flex flex-col gap-4">
-            {navLinks.map((link) => (
+          <div className="flex flex-col gap-6">
+            {navLinks.map((link, i) => (
               <a
-                key={link.name}
+                key={`${link.name}-mob-${i}`}
                 href={link.href}
-                className="text-lg font-medium text-foreground py-3 border-b border-white/5 last:border-0"
+                className="text-lg font-light text-white/80 hover:text-white"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.name}
               </a>
             ))}
-            <div className="flex flex-col gap-3 pt-4">
-              <Button variant="ghost" className="w-full justify-center">
+            <div className="flex flex-col gap-4 pt-4 border-t border-white/10">
+              <Button
+                variant="ghost"
+                className="w-full justify-center text-white/70"
+                onClick={() => {
+                  navigate("/login");
+                  setIsMobileMenuOpen(false);
+                }}
+              >
                 Sign In
               </Button>
-              <Button variant="premium" className="w-full justify-center">
-                Begin Journey
+              <Button className="w-full justify-center bg-gradient-to-r from-[#8b6544] to-[#4a2c2a] border-[#e9c49a]/30">
+                Start trial
               </Button>
             </div>
           </div>
