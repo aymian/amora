@@ -9,7 +9,6 @@ import {
     Settings,
     LogOut,
     Menu,
-    X,
     Command,
     Search,
     Bell,
@@ -31,15 +30,37 @@ import {
     PieChart,
     Rocket,
     Film,
+    Check,
+    X,
+    UserPlus,
     PlusSquare,
     Library,
     DollarSign,
     Lock,
     Flame,
+    Globe,
+    ArrowLeft,
+    ShieldAlert,
+    User,
+    HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import {
+    collection,
+    query,
+    where,
+    orderBy,
+    limit,
+    onSnapshot,
+    doc,
+    setDoc,
+    serverTimestamp,
+    getDoc,
+    getDocs
+} from "firebase/firestore";
+import { toast } from "sonner";
 import { Logo } from "@/components/brand/Logo";
 import {
     DropdownMenu,
@@ -49,6 +70,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 
 interface DashboardLayoutProps {
@@ -64,6 +86,120 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [allArtifacts, setAllArtifacts] = useState<any[]>([]);
     const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const q = query(
+            collection(db, "notifications"),
+            where("recipientId", "==", user.id),
+            limit(20)
+        );
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Client-side sort to avoid index requirements temporarily
+            fetched.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            setNotifications(fetched);
+        });
+
+        return () => unsub();
+    }, [user?.id]);
+
+    const handleApprove = async (notif: any) => {
+        if (!user?.id) return;
+        try {
+            const followDocId = `${notif.senderId}_${user.id}`;
+            await setDoc(doc(db, "follows", followDocId), {
+                followerId: notif.senderId,
+                followingId: user.id,
+                createdAt: serverTimestamp()
+            });
+
+            await setDoc(doc(db, "notifications", notif.id), { status: "approved" }, { merge: true });
+
+            // Send confirmation back
+            const confirmationId = `SYNC-${Date.now()}`;
+            await setDoc(doc(db, "notifications", confirmationId), {
+                id: confirmationId,
+                type: "alert",
+                senderId: user.id,
+                senderName: user.fullName || "Citizen",
+                senderPhoto: user.photoURL || "",
+                recipientId: notif.senderId,
+                message: "approved your resonance request. You are now following each other.",
+                status: "read",
+                createdAt: serverTimestamp()
+            });
+
+            toast.success("Resonance Approved", {
+                description: `You have successfully synchronized with ${notif.senderName}.`
+            });
+        } catch (error) {
+            console.error("Approval failed:", error);
+        }
+    };
+
+    const handleDecline = async (notif: any) => {
+        if (!user?.id) return;
+        try {
+            await setDoc(doc(db, "notifications", notif.id), { status: "declined" }, { merge: true });
+            toast.error("Frequency Refused", {
+                description: "The identity request has been terminated."
+            });
+        } catch (error) {
+            console.error("Decline failed:", error);
+        }
+    };
+
+    // Temporal Pulse Logic for Free Citizens
+    const [timerPhase, setTimerPhase] = useState<'access' | 'upgrade' | null>(null);
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        if (user?.plan !== 'free') {
+            setTimerPhase(null);
+            return;
+        }
+
+        const tick = () => {
+            let phase = localStorage.getItem('amora_timer_phase') as 'access' | 'upgrade' | null;
+            let targetStr = localStorage.getItem('amora_timer_target');
+            let target = targetStr ? parseInt(targetStr) : 0;
+            let now = Date.now();
+
+            // Safety Check: If the stored target is vastly larger than possible (e.g. from the old 3h logic)
+            // or if we simply want to force the 20s reset for the user.
+            const maxPossible = 25 * 60 * 60 * 1000; // 25 hours max
+            const diff = target - now;
+
+            if (!phase || !targetStr || now > target || diff > maxPossible || (phase === 'access' && diff > 20 * 1000)) {
+                // Determine next phase
+                const newPhase = phase === 'access' ? 'upgrade' : 'access';
+                const duration = newPhase === 'access' ? 20 * 1000 : 24 * 60 * 60 * 1000;
+
+                phase = newPhase;
+                target = Date.now() + duration;
+
+                localStorage.setItem('amora_timer_phase', phase);
+                localStorage.setItem('amora_timer_target', target.toString());
+            }
+
+            setTimerPhase(phase);
+            setTimeLeft(Math.max(0, Math.floor((target - now) / 1000)));
+        };
+
+        tick();
+        const interval = setInterval(tick, 1000);
+        return () => clearInterval(interval);
+    }, [user?.plan]);
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
     // Keyboard shortcut for search
     useEffect(() => {
@@ -80,38 +216,55 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    // Fetch artifacts for global search index
     useEffect(() => {
-        if (isSearchOpen && allArtifacts.length === 0) {
-            const fetchIndex = async () => {
-                const { collection, getDocs, query, doc, getDoc } = await import("firebase/firestore");
+        const fetchIndex = async () => {
+            if (isSearchOpen && allArtifacts.length === 0) {
+                const { collection, getDocs, query, doc, getDoc, limit } = await import("firebase/firestore");
                 const { db } = await import("@/lib/firebase");
 
-                const [imagesSnap, videosSnap, heroSnap] = await Promise.all([
-                    getDocs(query(collection(db, "gallery_images"))),
-                    getDocs(query(collection(db, "gallery_videos"))),
+                const fetchPromises: Promise<any>[] = [
+                    getDocs(query(collection(db, "gallery_images"), limit(20))),
+                    getDocs(query(collection(db, "gallery_videos"), limit(20))),
                     getDoc(doc(db, "site_content", "hero"))
-                ]);
+                ];
 
-                const images = imagesSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'image' }));
-                const videos = videosSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'video' }));
+                const isAdvanced = user?.plan === 'pro' || user?.plan === 'elite' || user?.plan === 'creator';
+                if (isAdvanced) {
+                    fetchPromises.push(getDocs(query(collection(db, "users"), limit(50))));
+                }
+
+                const responses = await Promise.all(fetchPromises);
+
+                const images = responses[0].docs.map((doc: any) => ({ id: doc.id, ...doc.data(), type: 'image', title: doc.data().title || 'Untitled' }));
+                const videos = responses[1].docs.map((doc: any) => ({ id: doc.id, ...doc.data(), type: 'video', title: doc.data().title || 'Untitled' }));
 
                 let hero: any[] = [];
-                if (heroSnap.exists()) {
-                    const data = heroSnap.data();
+                if (responses[2].exists()) {
+                    const data = responses[2].data();
                     hero = [{
                         id: data.id || "main-hero",
                         ...data,
                         type: 'video',
+                        title: data.title || 'Featured Hero',
                         imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : undefined)
                     }];
                 }
 
-                setAllArtifacts([...images, ...videos, ...hero]);
-            };
-            fetchIndex();
-        }
-    }, [isSearchOpen, allArtifacts.length]);
+                let users: any[] = [];
+                if (isAdvanced && responses[3]) {
+                    users = responses[3].docs.map((doc: any) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        type: 'user',
+                        title: doc.data().fullName || doc.data().email
+                    }));
+                }
+
+                setAllArtifacts([...users, ...images, ...videos, ...hero]);
+            }
+        };
+        fetchIndex();
+    }, [isSearchOpen, allArtifacts.length, user?.plan]);
 
     // Real-time filtering (YouTube-style autocomplete)
     useEffect(() => {
@@ -119,10 +272,15 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             setSuggestions([]);
             return;
         }
-        const filtered = allArtifacts.filter(art =>
-            art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            art.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 5); // Limit to top 5 for elite performance
+        const filtered = allArtifacts.filter(art => {
+            const queryLower = searchQuery.toLowerCase();
+            if (art.type === 'user') {
+                return (art.fullName?.toLowerCase().includes(queryLower) ||
+                    art.email?.toLowerCase().includes(queryLower));
+            }
+            return (art.title?.toLowerCase().includes(queryLower) ||
+                art.description?.toLowerCase().includes(queryLower));
+        }).slice(0, 8); // Expanded set for better cross-node navigation
         setSuggestions(filtered);
     }, [searchQuery, allArtifacts]);
 
@@ -139,66 +297,138 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         switch (plan) {
             case "free":
                 return [
-                    { icon: Home, label: "Home", path: "/dashboard" },
-                    { icon: Compass, label: "Explore", path: "/explore" },
-                    { icon: Image, label: "Images", path: "/images" },
-                    { icon: Video, label: "Short Videos", path: "/short-videos" },
-                    { icon: Smile, label: "Mood (Limited)", path: "/mood", locked: true },
-                    { icon: Heart, label: "Favorites", path: "/favorites", locked: true },
-                    { icon: Star, label: "Upgrade", path: "/upgrade", special: true },
+                    {
+                        label: "Main",
+                        items: [
+                            { icon: Home, label: "Home", path: "/dashboard" },
+                            { icon: Compass, label: "Explore", path: "/explore" },
+                            { icon: Image, label: "Images", path: "/images" },
+                            { icon: Video, label: "Short Stories (Limited)", path: "/short-videos" },
+                        ]
+                    },
+                    {
+                        label: "Experience",
+                        items: [
+                            { icon: Smile, label: "Mood Feed", path: "/mood", locked: true },
+                            { icon: Sparkles, label: "Exclusive Stories", path: "/exclusive", locked: true },
+                        ]
+                    },
+                    {
+                        label: "Social",
+                        items: [
+                            { icon: Heart, label: "Favorites (Limited)", path: "/favorites" },
+                        ]
+                    },
+                    {
+                        label: "Account",
+                        items: [
+                            { icon: Sparkles, label: "Unlock Full Access", path: "/upgrade", special: true },
+                            { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: HelpCircle, label: "Help & Terms", path: "/help" },
+                        ]
+                    }
                 ];
             case "pro":
                 return [
-                    { icon: Home, label: "Home", path: "/dashboard" },
-                    { icon: Compass, label: "Explore", path: "/explore" },
-                    { icon: Image, label: "Images", path: "/images" },
-                    { icon: Video, label: "Short Videos", path: "/short-videos" },
-                    { icon: Smile, label: "Mood (Manual)", path: "/mood" },
-                    { icon: Heart, label: "Favorites", path: "/favorites" },
-                    { icon: Clock, label: "History", path: "/history" },
-                    { icon: Star, label: "Upgrade", path: "/upgrade", special: true },
-                ];
-            case "premium":
-                return [
-                    { icon: Home, label: "Home", path: "/dashboard" },
-                    { icon: Compass, label: "Explore", path: "/explore" },
-                    { icon: Image, label: "Images", path: "/images" },
-                    { icon: Video, label: "Short Videos", path: "/short-videos" },
-                    { icon: LayoutGrid, label: "Stories (HD)", path: "/stories" },
-                    { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
-                    { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
-                    { icon: Heart, label: "Favorites", path: "/favorites" },
-                    { icon: Download, label: "Downloads", path: "/downloads" },
-                    { icon: Settings, label: "Settings", path: "/settings" },
+                    {
+                        label: "Main",
+                        items: [
+                            { icon: Home, label: "Home", path: "/dashboard" },
+                            { icon: Compass, label: "Explore", path: "/explore" },
+                            { icon: Image, label: "Images", path: "/images" },
+                            { icon: Video, label: "Short Stories", path: "/short-videos" },
+                            { icon: Film, label: "Videos", path: "/short-videos" },
+                        ]
+                    },
+                    {
+                        label: "Experience",
+                        items: [
+                            { icon: Smile, label: "Mood Feed (Manual)", path: "/mood" },
+                        ]
+                    },
+                    {
+                        label: "Social",
+                        items: [
+                            { icon: Heart, label: "Favorites", path: "/favorites" },
+                            { icon: Clock, label: "History", path: "/history" },
+                        ]
+                    },
+                    {
+                        label: "Account",
+                        items: [
+                            { icon: ShieldAlert, label: "Pro Access ✅", path: "/upgrade", special: true },
+                            { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: User, label: "Support", path: "/support" },
+                            { icon: Settings, label: "Settings", path: "/settings" },
+                        ]
+                    }
                 ];
             case "elite":
                 return [
-                    { icon: Home, label: "Home", path: "/dashboard" },
-                    { icon: Compass, label: "Explore", path: "/explore" },
-                    { icon: Image, label: "Images", path: "/images" },
-                    { icon: Sparkles, label: "Exclusive Stories", path: "/exclusive", special: true },
-                    { icon: MessageSquare, label: "AI Companion", path: "/ai-companion" },
-                    { icon: PieChart, label: "Emotion Analytics", path: "/analytics" },
-                    { icon: Rocket, label: "Early Access", path: "/early-access" },
-                    { icon: Download, label: "Downloads", path: "/downloads" },
-                    { icon: Settings, label: "Settings", path: "/settings" },
+                    {
+                        label: "Main",
+                        items: [
+                            { icon: Home, label: "Home", path: "/dashboard" },
+                            { icon: Compass, label: "Explore", path: "/explore" },
+                            { icon: Image, label: "Images", path: "/images" },
+                            { icon: Video, label: "Short Stories", path: "/short-videos" },
+                            { icon: Film, label: "Videos", path: "/watch" },
+                            { icon: Sparkles, label: "Exclusive Stories ✨", path: "/exclusive", special: true },
+                        ]
+                    },
+                    {
+                        label: "Experience",
+                        items: [
+                            { icon: Brain, label: "Emotion AI 🧠", path: "/emotion-ai" },
+                            { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
+                        ]
+                    },
+                    {
+                        label: "Social",
+                        items: [
+                            { icon: Heart, label: "Favorites", path: "/favorites" },
+                            { icon: Clock, label: "History", path: "/history" },
+                        ]
+                    },
+                    {
+                        label: "Account",
+                        items: [
+                            { icon: Crown, label: "Elite Badge 👑", path: "/upgrade", special: true },
+                            { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Settings, label: "Settings", path: "/settings" },
+                        ]
+                    }
                 ];
             case "creator":
                 return [
-                    { icon: Home, label: "Home", path: "/dashboard" },
-                    { icon: Film, label: "Creator Studio", path: "/creator-studio", special: true },
-                    { icon: Image, label: "Images", path: "/images" },
-                    { icon: PlusSquare, label: "Upload Content", path: "/upload" },
-                    { icon: Flame, label: "Contents", path: "/manager/contents" },
-                    { icon: Library, label: "Nexus Command", path: "/manager/nexus" },
-                    { icon: Users, label: "Followers", path: "/followers" },
-                    { icon: DollarSign, label: "Earnings", path: "/earnings" },
-                    { icon: BarChart3, label: "Analytics", path: "/analytics" },
-                    { icon: TrendingUp, label: "Boost Content", path: "/boost" },
-                    { icon: Settings, label: "Settings", path: "/settings" },
+                    {
+                        label: "Creator Studio",
+                        items: [
+                            { icon: LayoutGrid, label: "Dashboard", path: "/dashboard" },
+                            { icon: PlusSquare, label: "Upload Content", path: "/upload" },
+                            { icon: Film, label: "Manage Stories", path: "/manager/contents" },
+                            { icon: Library, label: "Content Status", path: "/manager/nexus" },
+                            { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
+                            { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },
+                        ]
+                    },
+                    {
+                        label: "Social",
+                        items: [
+                            { icon: Users, label: "Followers", path: "/followers" },
+                        ]
+                    },
+                    {
+                        label: "Account",
+                        items: [
+                            { icon: Star, label: "Verified Creator ⭐", path: "/upgrade", special: true },
+                            { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Settings, label: "Settings", path: "/settings" },
+                        ]
+                    }
                 ];
             default:
-                return [{ icon: Home, label: "Home", path: "/dashboard" }];
+                return [{ label: "Navigation", items: [{ icon: Home, label: "Home", path: "/dashboard" }] }];
         }
     };
 
@@ -208,8 +438,6 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
         await auth.signOut();
         navigate("/login");
     };
-
-    const isPro = user?.plan === "pro";
 
     return (
         <div className="min-h-screen bg-[#0B0F1A] text-white flex flex-col font-sans">
@@ -257,10 +485,17 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                                 <div
                                                     key={item.id}
                                                     onClick={() => {
+                                                        const isPhaseLocked = user?.plan === 'free' && timerPhase === 'upgrade';
+                                                        if (isPhaseLocked && item.path !== '/upgrade') {
+                                                            toast.error("Temporal Access Locked: Upgrade to continue exploration.");
+                                                            return;
+                                                        }
                                                         setIsSearchOpen(false);
                                                         setSearchQuery("");
                                                         if (item.type === 'video') {
                                                             navigate(`/watch?id=${item.id}`);
+                                                        } else if (item.type === 'user') {
+                                                            navigate(`/user-profile/${item.id}`);
                                                         } else {
                                                             navigate(`/images?search=${item.title}`);
                                                         }
@@ -268,26 +503,35 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                                     className="flex items-center justify-between px-6 py-5 rounded-[2rem] hover:bg-[#e9c49a]/5 border border-transparent hover:border-[#e9c49a]/10 cursor-pointer group transition-all duration-300"
                                                 >
                                                     <div className="flex items-center gap-5">
-                                                        <div className="w-14 h-14 rounded-2xl bg-white/5 overflow-hidden border border-white/10 group-hover:border-[#e9c49a]/30 transition-all relative">
-                                                            <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="" />
+                                                        <div className={cn(
+                                                            "w-14 h-14 rounded-2xl bg-white/5 overflow-hidden border border-white/10 group-hover:border-[#e9c49a]/30 transition-all relative",
+                                                            item.type === 'user' && "rounded-full"
+                                                        )}>
+                                                            <img src={item.photoURL || item.imageUrl || `https://ui-avatars.com/api/?name=${item.fullName || 'User'}&background=random`} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt="" />
                                                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                {item.type === 'video' ? <Video className="w-5 h-5 text-white" /> : <Image className="w-5 h-5 text-white" />}
+                                                                {item.type === 'video' ? <Video className="w-5 h-5 text-white" /> :
+                                                                    item.type === 'user' ? <Users className="w-5 h-5 text-white" /> : <Image className="w-5 h-5 text-white" />}
                                                             </div>
                                                         </div>
                                                         <div className="space-y-1">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-lg font-light text-white/60 group-hover:text-white transition-colors">
-                                                                    {item.title.toLowerCase().replace(/\s+/g, '_')}.artifact
+                                                                    {item.type === 'user' ? (item.fullName || item.email) : item.title.toLowerCase().replace(/\s+/g, '_')}.{item.type === 'user' ? 'citizen' : 'artifact'}
                                                                 </span>
                                                                 <span className={cn(
                                                                     "text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-md border",
-                                                                    item.type === 'video' ? "text-[#e9c49a] border-[#e9c49a]/20 bg-[#e9c49a]/5" : "text-blue-400 border-blue-400/20 bg-blue-400/5"
+                                                                    item.type === 'video' ? "text-[#e9c49a] border-[#e9c49a]/20 bg-[#e9c49a]/5" :
+                                                                        item.type === 'user' ? "text-purple-400 border-purple-400/20 bg-purple-400/5" : "text-blue-400 border-blue-400/20 bg-blue-400/5"
                                                                 )}>
                                                                     {item.type}
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-3 text-[9px] uppercase tracking-widest text-white/20 font-bold">
-                                                                <Activity className="w-3 h-3" /> ID: {item.id.slice(-6).toUpperCase()}
+                                                                {item.type === 'user' ? (
+                                                                    <><Globe className="w-3 h-3" /> {item.plan || 'Free'} Protocol</>
+                                                                ) : (
+                                                                    <><Activity className="w-3 h-3" /> ID: {item.id.slice(-6).toUpperCase()}</>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -355,10 +599,125 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         >
                             <Search className="w-5 h-5 group-active:scale-90 transition-transform" />
                         </button>
-                        <button className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-[#e9c49a] rounded-full" />
-                        </button>
+
+                        {(user?.plan === 'pro' || user?.plan === 'elite' || user?.plan === 'creator') && (
+                            <button
+                                onClick={() => navigate("/messages")}
+                                className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
+                            >
+                                <MessageSquare className="w-5 h-5 transition-transform group-hover:scale-110" />
+                            </button>
+                        )}
+
+                        {(user?.plan === 'free' && timerPhase) && (
+                            <div className={cn(
+                                "flex items-center gap-3 px-4 py-1.5 rounded-full border transition-all duration-500",
+                                timerPhase === 'access'
+                                    ? "bg-white/[0.02] border-white/5"
+                                    : "bg-red-500/10 border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                            )}>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-white/30 leading-none mb-0.5">
+                                        {timerPhase === 'access' ? 'Free Access' : 'Upgrade Required'}
+                                    </span>
+                                    <span className={cn(
+                                        "text-[10px] font-mono font-bold tracking-wider leading-none",
+                                        timerPhase === 'access' ? "text-[#e9c49a]" : "text-red-400"
+                                    )}>
+                                        {formatTime(timeLeft)}
+                                    </span>
+                                </div>
+                                <div className={cn(
+                                    "w-8 h-8 rounded-full flex items-center justify-center border",
+                                    timerPhase === 'access' ? "bg-white/5 border-white/10" : "bg-red-500 text-white border-transparent"
+                                )}>
+                                    <Clock className={cn("w-3.5 h-3.5", timerPhase === 'access' ? "text-white/40" : "animate-spin-slow")} />
+                                </div>
+                                {timerPhase === 'upgrade' && (
+                                    <button
+                                        onClick={() => navigate("/upgrade")}
+                                        className="ml-1 px-3 py-1 bg-red-500 text-white text-[8px] uppercase font-bold tracking-widest rounded-full hover:bg-white hover:text-black transition-all"
+                                    >
+                                        Sync Now
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all">
+                                    <Bell className="w-5 h-5" />
+                                    {notifications.filter(n => n.status === 'pending').length > 0 && (
+                                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(239,68,68,0.4)] animate-pulse">
+                                            {notifications.filter(n => n.status === 'pending').length}
+                                        </span>
+                                    )}
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-80 bg-[#0D121F]/90 backdrop-blur-3xl border-white/5 p-4 rounded-[2rem] shadow-2xl space-y-4">
+                                <div className="flex items-center justify-between px-2 mb-2">
+                                    <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20">Identity Alerts</span>
+                                    <span className="text-[10px] uppercase font-bold text-[#e9c49a]">{notifications.length} Nodes</span>
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-2">
+                                    {notifications.length > 0 ? (
+                                        notifications.map((notif) => (
+                                            <div key={notif.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 group hover:bg-white/[0.04] transition-all">
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="w-8 h-8 rounded-xl border border-white/5">
+                                                        <AvatarImage src={notif.senderPhoto} />
+                                                        <AvatarFallback className="bg-white/5 text-[8px]">{notif.senderName?.[0]}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-medium text-white/80 leading-tight">
+                                                            <span className="font-bold text-white">{notif.senderName}</span>
+                                                            {notif.type === 'follow_request' ? " requested resonance access." : ` ${notif.message}`}
+                                                        </p>
+                                                        <p className="text-[8px] text-white/20 uppercase font-bold tracking-widest mt-1">
+                                                            {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {notif.type === 'follow_request' && notif.status === 'pending' && (
+                                                    <div className="flex gap-2 justify-end">
+                                                        <button
+                                                            onClick={() => handleDecline(notif)}
+                                                            className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleApprove(notif)}
+                                                            className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
+                                                        >
+                                                            <Check className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {(notif.type === 'alert' || (notif.type === 'follow_request' && notif.status === 'approved')) && (
+                                                    <div className="flex justify-end">
+                                                        <button
+                                                            onClick={() => navigate("/messages")}
+                                                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#e9c49a]/10 text-[#e9c49a] hover:bg-[#e9c49a] hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest"
+                                                        >
+                                                            <MessageSquare className="w-3.5 h-3.5" /> Start Conversation
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="py-8 text-center space-y-3">
+                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto">
+                                                <Bell className="w-4 h-4 text-white/10" />
+                                            </div>
+                                            <p className="text-[10px] text-white/20 italic font-light">No active frequencies detected.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     <div className="h-8 w-[1px] bg-white/5 mx-2" />
@@ -379,9 +738,13 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                     </p>
                                     <p className={cn(
                                         "text-[9px] uppercase tracking-widest font-bold",
-                                        isPro ? "text-[#e9c49a]" : "text-white/40"
+                                        user?.plan === 'pro' ? "text-[#e9c49a]" :
+                                            user?.plan === 'elite' ? "text-[#d4af37]" :
+                                                user?.plan === 'creator' ? "text-purple-400" : "text-white/40"
                                     )}>
-                                        {isPro ? "Pro Plan" : "Free Plan"}
+                                        {user?.plan === 'pro' ? "Pro Verified" :
+                                            user?.plan === 'elite' ? "Elite Sovereign" :
+                                                user?.plan === 'creator' ? "Master Creator" : "Free Explorer"}
                                     </p>
                                 </div>
                                 <ChevronDown className="w-3 h-3 text-white/20 group-hover:text-white transition-colors mr-2" />
@@ -398,10 +761,13 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                 <Settings className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
                                 <span className="text-sm font-light">Billing & Plan</span>
                             </DropdownMenuItem>
-                            {!isPro && (
-                                <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#e9c49a]/10 hover:bg-[#e9c49a]/20 focus:bg-[#e9c49a]/20 cursor-pointer transition-all group mt-1">
+                            {user?.plan !== 'creator' && (
+                                <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#e9c49a]/10 hover:bg-[#e9c49a]/20 focus:bg-[#e9c49a]/20 cursor-pointer transition-all group mt-1">
                                     <Crown className="w-4 h-4 text-[#e9c49a]" />
-                                    <span className="text-sm font-medium text-[#e9c49a]">Upgrade to Pro</span>
+                                    <span className="text-sm font-medium text-[#e9c49a]">
+                                        {user?.plan === 'free' ? "Upgrade to Pro" :
+                                            user?.plan === 'pro' ? "Upgrade to Elite" : "Unlock Creator Toolset"}
+                                    </span>
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator className="bg-white/5 mt-1" />
@@ -428,65 +794,78 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
                 {/* Fixed Sidebar */}
                 <aside className={cn(
-                    "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-transform duration-300 ease-in-out z-40 bg-gradient-to-b from-[#0D121F] to-[#0B0F1A] border-r border-white/5 pt-8",
+                    "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#0D121F] to-[#0B0F1A] border-r border-white/5 pt-8",
                     isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
                 )}>
                     <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
-                        <div className="space-y-1">
-                            <p className="px-4 text-[10px] uppercase tracking-[0.3em] text-white/20 font-bold mb-4">Navigation</p>
-                            {menuItems.map((item) => {
-                                const isActive = location.pathname === item.path;
-                                const isLocked = (item as any).locked;
-                                const isSpecial = (item as any).special;
+                        <div className="flex flex-col gap-6">
+                            {getMenuItems().map((group: any) => (
+                                <div key={group.label} className="space-y-1">
+                                    <p className="px-4 text-[10px] uppercase tracking-[0.3em] text-white/20 font-bold mb-2">{group.label}</p>
+                                    {group.items.map((item: any) => {
+                                        const isActive = location.pathname === item.path;
+                                        const isLocked = item.locked;
+                                        const isSpecial = item.special;
 
-                                return (
-                                    <button
-                                        key={item.label}
-                                        onClick={() => !isLocked && navigate(item.path)}
-                                        className={cn(
-                                            "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
-                                            isActive
-                                                ? "bg-white/[0.04] text-white shadow-[inset_0_0_20px_rgba(233,196,154,0.05)]"
-                                                : isLocked
-                                                    ? "opacity-50 cursor-not-allowed grayscale"
-                                                    : "text-white/40 hover:text-white hover:bg-white/[0.02]",
-                                            isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {isActive && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#e9c49a] rounded-r-full shadow-[0_0_10px_#e9c49a]" />
-                                            )}
-                                            <item.icon className={cn(
-                                                "w-4 h-4 transition-all",
-                                                isActive || isSpecial ? "text-[#e9c49a] drop-shadow-[0_0_8px_rgba(233,196,154,0.5)]" : "group-hover:text-[#e9c49a]"
-                                            )} />
-                                            <span className="text-xs font-light tracking-wide">{item.label}</span>
-                                        </div>
+                                        return (
+                                            <button
+                                                key={item.label}
+                                                onClick={() => {
+                                                    const isLockedCurrent = user?.plan === 'free' && timerPhase === 'upgrade';
+                                                    if (isLockedCurrent && item.path !== '/upgrade') {
+                                                        toast.error("Protocol Locked: Complete synchronization to regain access.");
+                                                        return;
+                                                    }
+                                                    if (!isLocked) navigate(item.path);
+                                                }}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
+                                                    isActive
+                                                        ? "bg-white/[0.04] text-white shadow-[inset_0_0_20px_rgba(233,196,154,0.05)]"
+                                                        : isLocked
+                                                            ? "opacity-50 cursor-not-allowed grayscale"
+                                                            : "text-white/40 hover:text-white hover:bg-white/[0.02]",
+                                                    isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10",
+                                                    (user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {isActive && (
+                                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#e9c49a] rounded-r-full shadow-[0_0_10px_#e9c49a]" />
+                                                    )}
+                                                    <item.icon className={cn(
+                                                        "w-4 h-4 transition-all",
+                                                        isActive || isSpecial ? "text-[#e9c49a] drop-shadow-[0_0_8px_rgba(233,196,154,0.5)]" : "group-hover:text-[#e9c49a]"
+                                                    )} />
+                                                    <span className="text-xs font-light tracking-wide">{item.label}</span>
+                                                </div>
 
-                                        {isLocked && (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[8px] uppercase tracking-tighter text-[#e9c49a]/50 font-bold hidden lg:block group-hover:block transition-all">Unlock Premium</span>
-                                                <Lock className="w-3 h-3 text-[#e9c49a]/60" />
-                                            </div>
-                                        )}
-                                    </button>
-                                );
-                            })}
+                                                {isLocked && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Lock className="w-3 h-3 text-[#e9c49a]/60" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ))}
                         </div>
 
                         <div className="space-y-4 pt-8 border-t border-white/5">
                             <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
                                 <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
-                                    {user?.plan === 'elite' ? 'Elite Status' :
-                                        user?.plan === 'creator' ? 'Cinema Partner' :
-                                            user?.plan === 'premium' ? 'Premium Tier' : 'Explorer Status'}
+                                    {user?.plan === 'free' ? 'Explorer Status' :
+                                        user?.plan === 'pro' ? 'Resonance Tier' :
+                                            user?.plan === 'elite' ? 'Elite Sovereign' :
+                                                user?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
                                 </p>
                                 <p className="text-[9px] text-white/40 font-light leading-relaxed">
-                                    {user?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
-                                        user?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
-                                            user?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
-                                                'Welcome to the future of cinematic narrative.'}
+                                    {user?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
+                                        user?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
+                                            user?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
+                                                user?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
+                                                    'Welcome to the future of cinematic narrative.'}
                                 </p>
                             </div>
 
@@ -503,8 +882,58 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
                 {/* Main Content Area */}
                 <main className="flex-1 md:ml-[240px] overflow-y-auto bg-[#0B0F1A] custom-scrollbar relative">
-                    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10">
+                    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 relative min-h-full">
                         {children}
+
+                        {/* Orbital Upgrade Blocker - Absolute Phase Lock */}
+                        <AnimatePresence>
+                            {(user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => location.pathname.startsWith(p))) && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-[#0B0F1A]/80 backdrop-blur-2xl rounded-[3rem] overflow-hidden"
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.9, y: 20, opacity: 0 }}
+                                        animate={{ scale: 1, y: 0, opacity: 1 }}
+                                        transition={{ type: 'spring', damping: 20 }}
+                                        className="w-full max-w-lg bg-white/[0.02] border border-white/10 rounded-[3rem] p-12 text-center space-y-8 relative shadow-2xl overflow-hidden"
+                                    >
+                                        {/* Background Effects */}
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 blur-[100px] -z-10" />
+                                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#e9c49a]/5 blur-[100px] -z-10" />
+
+                                        <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto relative">
+                                            <div className="absolute inset-0 rounded-full border border-red-500/30 animate-ping opacity-20" />
+                                            <Lock className="w-10 h-10 text-red-500" />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h2 className="text-3xl font-display font-light tracking-tight text-white/90">Temporal Access <span className="text-red-400 italic">Locked</span></h2>
+                                            <p className="text-white/30 text-sm font-light leading-relaxed">
+                                                Your 20-second immersion window has finished. To maintain archival frequency and access the complete planetary registry, you must synchronize with a premium protocol.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex flex-col gap-4">
+                                            <Button
+                                                onClick={() => navigate("/upgrade")}
+                                                className="h-16 rounded-2xl bg-[#e9c49a] text-black font-bold uppercase tracking-[0.2em] text-[10px] hover:bg-white transition-all shadow-xl group"
+                                            >
+                                                Sync Identity Protocol <ArrowLeft className="w-4 h-4 ml-2 rotate-180 group-hover:translate-x-1 transition-transform" />
+                                            </Button>
+                                            <div className="flex items-center justify-between px-6 py-4 rounded-xl bg-white/5 border border-white/5">
+                                                <span className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Resync Available In</span>
+                                                <span className="text-sm font-mono font-bold text-red-400">{formatTime(timeLeft)}</span>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-[9px] uppercase tracking-[0.4em] text-white/10 font-bold">Identity Registry // Phase v4.0.21</p>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Subtle Background Accent */}

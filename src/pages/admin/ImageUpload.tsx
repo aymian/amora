@@ -94,6 +94,7 @@ const ImageUpload = () => {
             await addDoc(collection(db, "gallery_images"), {
                 id: assetId,
                 imageUrl: imageUrl,
+                publicId: result.public_id,
                 title,
                 description,
                 createdAt: serverTimestamp(),

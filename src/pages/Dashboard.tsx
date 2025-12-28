@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function Dashboard() {
     const [userData, setUserData] = useState<any>(null);
     const [heroes, setHeroes] = useState<any[]>([]);
+    const [newReleases, setNewReleases] = useState<any[]>([]);
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -36,18 +37,18 @@ export default function Dashboard() {
                         if (!data.onboardingCompleted) {
                             navigate("/onboarding");
                         } else {
-                            setUserData(data);
+                            setUserData({ id: user.uid, ...data });
                         }
                     }
 
-                    // Fetch Hero Rotation (Last 5 videos) - Resilient fetch
-                    let videoHeroes: any[] = [];
+                    // Fetch Gallery Data (Videos)
+                    let videoItems: any[] = [];
                     try {
-                        const q = query(collection(db, "gallery_videos"), limit(10));
+                        const q = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(20));
                         const querySnapshot = await getDocs(q);
-                        videoHeroes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        videoItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     } catch (e) {
-                        console.warn("Archival gallery fetch failed, using fallback hero only.");
+                        console.warn("Archival gallery fetch failed:", e);
                     }
 
                     // Also fetch the specific hero doc as priority
@@ -58,15 +59,16 @@ export default function Dashboard() {
                             mainHero = { id: 'main-hero', ...heroDoc.data() };
                         }
                     } catch (e) {
-                        console.error("Critical: Hero stage fetch failed.");
+                        console.error("Hero stage fetch failed.");
                     }
 
-                    // Combine and filter duplicates
-                    const combined = (mainHero ? [mainHero, ...videoHeroes] : videoHeroes)
-                        .filter((item: any) => item && (item.videoUrl || item.imageUrl));
+                    // Process Heroes (Top 5 for rotation)
+                    const heroList = (mainHero ? [mainHero, ...videoItems] : videoItems)
+                        .filter((item: any) => item && (item.videoUrl || item.imageUrl))
+                        .slice(0, 5);
 
-                    // Deduplicate by videoUrl or ID
-                    const deduped = combined.reduce((acc: any[], current: any) => {
+                    // Deduplicate
+                    const dedupedHeroes = heroList.reduce((acc: any[], current: any) => {
                         const isDuplicate = acc.some(item =>
                             (item.id === current.id && item.id !== 'main-hero') ||
                             (item.videoUrl && item.videoUrl === current.videoUrl)
@@ -75,14 +77,16 @@ export default function Dashboard() {
                         return acc;
                     }, []);
 
-                    // High-fidelity Client-side Sort
-                    const finalHeroes = deduped.sort((a, b) => {
-                        const timeA = a.createdAt?.seconds || (a.updatedAt ? new Date(a.updatedAt).getTime() / 1000 : 0);
-                        const timeB = b.createdAt?.seconds || (b.updatedAt ? new Date(b.updatedAt).getTime() / 1000 : 0);
-                        return timeB - timeA;
-                    }).slice(0, 6); // Keep the top 6 artifacts
+                    setHeroes(dedupedHeroes);
 
-                    setHeroes(finalHeroes);
+                    // Process New Releases (Next 6 items, avoiding those in heroes if possible)
+                    const releaseList = videoItems
+                        .filter(item => !dedupedHeroes.some((h: any) => h.id === item.id))
+                        .slice(0, 6);
+
+                    // Fallback to videoItems if deduped filter is too aggressive
+                    setNewReleases(releaseList.length > 0 ? releaseList : videoItems.slice(0, 6));
+
                 } else {
                     navigate("/login");
                 }
@@ -270,16 +274,33 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
-                        {[1, 2].map((it) => (
-                            <div key={it} className="relative aspect-square rounded-[32px] overflow-hidden group cursor-pointer border border-white/5 hover:border-[#e9c49a]/30 transition-all">
-                                <img src={`https://images.unsplash.com/photo-${1530000000000 + it * 100000}?auto=format&fit=crop&q=80`} className="w-full h-full object-cover transition-transform duration-1000" alt="" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-8">
-                                    <p className="text-[#e9c49a] text-[10px] font-bold uppercase tracking-[0.3em] mb-2">Premiere</p>
-                                    <p className="text-xl font-display font-light leading-none mb-1">Soul & Shadow</p>
-                                    <p className="text-white/40 text-[10px] font-light">Original Cinematic</p>
+                        {newReleases.length > 0 ? (
+                            newReleases.map((item) => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => navigate(`/watch?id=${item.id}`)}
+                                    className="relative aspect-square rounded-[32px] overflow-hidden group cursor-pointer border border-white/5 hover:border-[#e9c49a]/30 transition-all"
+                                >
+                                    <img
+                                        src={item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : "https://images.unsplash.com/photo-1530000000000?auto=format&fit=crop&q=80")}
+                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0"
+                                        alt={item.title}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-8">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <p className="text-[#e9c49a] text-[9px] font-bold uppercase tracking-[0.3em]">Newly Released</p>
+                                            <Sparkles className="w-3 h-3 text-[#e9c49a] animate-pulse" />
+                                        </div>
+                                        <p className="text-xl font-display font-light leading-none mb-1 group-hover:text-[#e9c49a] transition-colors">{item.title}</p>
+                                        <p className="text-white/40 text-[10px] font-light uppercase tracking-widest">{item.category || "Original Cinematic"}</p>
+                                    </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="aspect-square rounded-[32px] border border-dashed border-white/5 flex items-center justify-center p-8 text-center bg-white/[0.01]">
+                                <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">Awaiting New Artifacts...</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             </div>

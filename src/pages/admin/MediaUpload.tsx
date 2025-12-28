@@ -96,6 +96,7 @@ const MediaUpload = () => {
             await setDoc(doc(db, "site_content", "hero"), {
                 id: assetId,
                 videoUrl: videoUrl,
+                publicId: result.public_id,
                 title,
                 description,
                 updatedAt: new Date().toISOString(),
@@ -106,6 +107,7 @@ const MediaUpload = () => {
             await addDoc(collection(db, "gallery_videos"), {
                 id: assetId,
                 videoUrl: videoUrl,
+                publicId: result.public_id,
                 imageUrl: videoUrl.replace(/\.[^/.]+$/, ".jpg"), // Cloudinary auto-thumbnail trick
                 title,
                 description,

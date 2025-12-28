@@ -27,6 +27,9 @@ const AdminNexus = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [citizens, setCitizens] = useState<any[]>([]);
     const [fetchingUsers, setFetchingUsers] = useState(false);
+    const [payments, setPayments] = useState<any[]>([]);
+    const [fetchingPayments, setFetchingPayments] = useState(false);
+    const [selectedCitizen, setSelectedCitizen] = useState<any>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -41,9 +44,9 @@ const AdminNexus = () => {
             const fetchUsers = async () => {
                 setFetchingUsers(true);
                 try {
-                    const { collection, getDocs } = await import('firebase/firestore');
+                    const { collection, getDocs, query, orderBy } = await import('firebase/firestore');
                     const { db } = await import('@/lib/firebase');
-                    const querySnapshot = await getDocs(collection(db, "users"));
+                    const querySnapshot = await getDocs(query(collection(db, "users"), orderBy('createdAt', 'desc')));
                     const userList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setCitizens(userList);
                 } catch (error) {
@@ -54,7 +57,72 @@ const AdminNexus = () => {
             };
             fetchUsers();
         }
+
+        if (activeTab === 'payments') {
+            const fetchPayments = async () => {
+                setFetchingPayments(true);
+                try {
+                    const { collection, getDocs, query, where } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase');
+                    const q = query(collection(db, "payments"), where("status", "==", "pending"));
+                    const querySnapshot = await getDocs(q);
+                    const paymentList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    // Client-side sort to avoid requiring composite indexes
+                    paymentList.sort((a: any, b: any) => {
+                        const timeA = a.createdAt?.seconds || 0;
+                        const timeB = b.createdAt?.seconds || 0;
+                        return timeB - timeA;
+                    });
+
+                    setPayments(paymentList);
+                } catch (error) {
+                    console.error("Error fetching payments:", error);
+                } finally {
+                    setFetchingPayments(false);
+                }
+            };
+            fetchPayments();
+        }
     }, [activeTab]);
+
+    const handleApprovePayment = async (payment: any) => {
+        try {
+            const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            // 1. Update Payment Status
+            await updateDoc(doc(db, "payments", payment.id), {
+                status: 'approved',
+                approvedAt: serverTimestamp()
+            });
+
+            // 2. Update User Plan
+            await updateDoc(doc(db, "users", payment.userId), {
+                plan: payment.plan
+            });
+
+            // 3. Refresh List
+            setPayments(prev => prev.filter(p => p.id !== payment.id));
+            alert(`Citizen ${payment.userName} has been successfully escalated to ${payment.plan} protocol.`);
+        } catch (error) {
+            console.error("Approval Error:", error);
+        }
+    };
+
+    const handleRejectPayment = async (paymentId: string) => {
+        if (!window.confirm("Are you sure you want to terminate this synchronization request?")) return;
+        try {
+            const { doc, updateDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            await updateDoc(doc(db, "payments", paymentId), {
+                status: 'rejected'
+            });
+            setPayments(prev => prev.filter(p => p.id !== paymentId));
+        } catch (error) {
+            console.error("Rejection Error:", error);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('amora_admin_token');
@@ -307,6 +375,97 @@ const AdminNexus = () => {
                         </>
                     )}
 
+                    {activeTab === 'payments' && (
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <div className="space-y-1">
+                                <h2 className="text-3xl font-display font-light tracking-tight">Pending Synchronizations</h2>
+                                <p className="text-white/30 text-xs font-light tracking-widest uppercase">Directorial Verification Hub // {payments.length} Requests</p>
+                            </div>
+
+                            {fetchingPayments ? (
+                                <div className="h-64 flex items-center justify-center">
+                                    <div className="w-10 h-10 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+                                </div>
+                            ) : payments.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-6">
+                                    {payments.map((payment) => (
+                                        <div key={payment.id} className="group bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 hover:bg-white/[0.04] hover:border-white/10 transition-all flex flex-col lg:flex-row gap-10">
+                                            {/* Screenshot Preview */}
+                                            <div className="w-full lg:w-72 h-48 lg:h-auto rounded-[2rem] overflow-hidden border border-white/10 bg-black/40 relative group/img">
+                                                {payment.screenshotUrl ? (
+                                                    <img src={payment.screenshotUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" alt="Proof" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-white/10 italic text-[10px]">No proof artifact</div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <a href={payment.screenshotUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-widest hover:bg-white/20 transition-all">View Full Artifact</a>
+                                                </div>
+                                            </div>
+
+                                            {/* Details */}
+                                            <div className="flex-1 flex flex-col justify-between py-2">
+                                                <div className="space-y-6">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <h3 className="text-xl font-medium text-white/90">{payment.userName}</h3>
+                                                                <span className="px-3 py-1 rounded-full bg-[#e9c49a]/10 text-[#e9c49a] text-[9px] uppercase font-bold tracking-[0.2em]">{payment.plan} Protocol</span>
+                                                            </div>
+                                                            <p className="text-[10px] text-white/20 font-light tracking-widest uppercase flex items-center gap-2">
+                                                                <Activity className="w-3 h-3" /> ID: {payment.id}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-2xl font-display font-light text-[#e9c49a]">{payment.amount}</span>
+                                                            <p className="text-[8px] text-white/20 uppercase font-bold tracking-widest mt-1">Verification Required</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-8 p-6 rounded-[2rem] bg-white/[0.02] border border-white/5">
+                                                        <div className="space-y-1">
+                                                            <p className="text-[7px] uppercase tracking-widest text-white/20 font-bold">Sender Resonance</p>
+                                                            <p className="text-xs text-white/60 font-medium">{payment.senderName || 'Unspecified'}</p>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[7px] uppercase tracking-widest text-white/20 font-bold">Synchronizer Node</p>
+                                                            <p className="text-xs text-white/60 font-medium">{payment.momoNumber || 'Credit System'}</p>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[7px] uppercase tracking-widest text-white/20 font-bold">Method</p>
+                                                            <span className="text-[9px] text-[#e9c49a] uppercase font-bold">{payment.method}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-4 pt-8">
+                                                    <button
+                                                        onClick={() => handleApprovePayment(payment)}
+                                                        className="flex-1 py-4 bg-emerald-500 text-black rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] hover:bg-white transition-all active:scale-95 shadow-[0_15px_30px_rgba(16,185,129,0.15)]"
+                                                    >
+                                                        Authorize Ascension
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRejectPayment(payment.id)}
+                                                        className="px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl font-bold text-[10px] uppercase tracking-[0.3em] hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="h-64 flex flex-col items-center justify-center space-y-4 bg-white/[0.01] border border-dashed border-white/5 rounded-[3rem]">
+                                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                                        <CheckCircle2 className="w-6 h-6 text-white/10" />
+                                    </div>
+                                    <p className="text-white/20 text-sm font-light italic text-center">All citizen synchronizations are currently finalized.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'users' && (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="flex items-center justify-between px-2">
@@ -326,7 +485,11 @@ const AdminNexus = () => {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {citizens.map((citizen) => (
-                                        <div key={citizen.id} className="group bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 hover:bg-white/[0.04] hover:border-white/10 transition-all flex items-start gap-6 font-sans">
+                                        <div
+                                            key={citizen.id}
+                                            onClick={() => setSelectedCitizen(citizen)}
+                                            className="group bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 hover:bg-white/[0.04] hover:border-white/10 transition-all flex items-start gap-6 font-sans cursor-pointer"
+                                        >
                                             <div className="w-20 h-20 rounded-[2rem] overflow-hidden border border-white/10 bg-black/40">
                                                 {citizen.photoURL ? (
                                                     <img src={citizen.photoURL} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
@@ -342,7 +505,9 @@ const AdminNexus = () => {
                                                         <h3 className="text-lg font-medium text-white/90 group-hover:text-white transition-all">{citizen.fullName || 'Anonymous User'}</h3>
                                                         <span className={cn(
                                                             "px-2 py-0.5 rounded-full text-[7px] uppercase font-bold tracking-widest",
-                                                            citizen.plan === 'elite' ? "bg-[#e9c49a]/10 text-[#e9c49a]" : "bg-white/5 text-white/40"
+                                                            citizen.plan === 'elite' ? "bg-[#e9c49a]/10 text-[#e9c49a]" :
+                                                                citizen.plan === 'pro' ? "bg-blue-500/10 text-blue-400" :
+                                                                    citizen.plan === 'creator' ? "bg-purple-500/10 text-purple-400" : "bg-white/5 text-white/40"
                                                         )}>
                                                             {citizen.plan || 'Free Member'}
                                                         </span>
@@ -359,8 +524,8 @@ const AdminNexus = () => {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <p className="text-[7px] uppercase tracking-widest text-white/20 font-bold">Last Activity</p>
-                                                        <span className="text-[9px] text-white/60 font-light truncate">Just now</span>
+                                                        <p className="text-[7px] uppercase tracking-widest text-white/20 font-bold">Resonance Status</p>
+                                                        <span className="text-[9px] text-white/60 font-light truncate">Operational</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -371,6 +536,87 @@ const AdminNexus = () => {
                                     ))}
                                 </div>
                             )}
+
+                            {/* Citizen Resonance Modal */}
+                            <AnimatePresence>
+                                {selectedCitizen && (
+                                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-2xl">
+                                        <motion.div
+                                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                            className="w-full max-w-2xl bg-[#0D121F] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl relative"
+                                        >
+                                            <button
+                                                onClick={() => setSelectedCitizen(null)}
+                                                className="absolute top-8 right-8 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all z-10"
+                                            >
+                                                <XCircle className="w-5 h-5 text-white/40" />
+                                            </button>
+
+                                            <div className="p-12 space-y-10">
+                                                <div className="flex items-center gap-8">
+                                                    <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border border-[#e9c49a]/30 shadow-[0_0_30px_rgba(233,196,154,0.1)]">
+                                                        {selectedCitizen.photoURL ? (
+                                                            <img src={selectedCitizen.photoURL} className="w-full h-full object-cover" alt="" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-white/20 text-4xl font-display">
+                                                                {selectedCitizen.fullName?.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <h2 className="text-3xl font-display font-light">{selectedCitizen.fullName}</h2>
+                                                            <span className="px-3 py-1 rounded-full bg-[#e9c49a]/10 border border-[#e9c49a]/20 text-[#e9c49a] text-[9px] uppercase font-bold tracking-widest">
+                                                                {selectedCitizen.plan || 'Free'} protocol
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-white/40 text-sm font-light uppercase tracking-widest">{selectedCitizen.email}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-1">
+                                                        <p className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Identity ID</p>
+                                                        <p className="text-xs text-white/60 font-mono truncate">{selectedCitizen.id}</p>
+                                                    </div>
+                                                    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-1">
+                                                        <p className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Synchronization Date</p>
+                                                        <p className="text-xs text-white/60">
+                                                            {selectedCitizen.createdAt?.seconds
+                                                                ? new Date(selectedCitizen.createdAt.seconds * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                                                                : 'Initial Registry'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-1">
+                                                        <p className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Immersion Path</p>
+                                                        <p className="text-xs text-white/60 font-medium">
+                                                            {selectedCitizen.onboardingCompleted ? 'Pathway Verified' : 'Incomplete Initialization'}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-1">
+                                                        <p className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Directorial Status</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <Activity className="w-3 h-3 text-emerald-500" />
+                                                            <span className="text-xs text-white/60">Operational Resonance</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-4 pt-4">
+                                                    <button className="flex-1 py-4 rounded-2xl bg-[#e9c49a] text-black font-bold text-[10px] uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95">
+                                                        Modify Protocol
+                                                    </button>
+                                                    <button className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all">
+                                                        Restrict Access
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     )}
                 </div>

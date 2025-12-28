@@ -16,6 +16,11 @@ import ImageUpload from "./pages/admin/ImageUpload";
 import Gallery from "./pages/Gallery";
 import ShortVideos from "./pages/ShortVideos";
 import Watch from "./pages/Watch";
+import Upgrade from "./pages/Upgrade";
+import Payment from "./pages/Payment";
+import UserProfile from "./pages/UserProfile";
+import Profile from "./pages/Profile";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +46,11 @@ const App = () => (
           <Route path="/images" element={<Gallery />} />
           <Route path="/short-videos" element={<ShortVideos />} />
           <Route path="/watch" element={<Watch />} />
+          <Route path="/upgrade" element={<Upgrade />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/user-profile/:userId" element={<UserProfile />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/messages" element={<Messages />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

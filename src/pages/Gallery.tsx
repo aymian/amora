@@ -42,7 +42,7 @@ export default function Gallery() {
                 const { doc, getDoc } = await import("firebase/firestore");
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 if (userDoc.exists()) {
-                    setUserData(userDoc.data());
+                    setUserData({ id: user.uid, ...userDoc.data() });
                 }
             }
         });

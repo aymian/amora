@@ -31,6 +31,7 @@ interface Artifact {
     description: string;
     imageUrl?: string;
     videoUrl?: string;
+    publicId?: string;
     type: 'image' | 'video';
     createdAt: any;
 }
@@ -55,14 +56,14 @@ export default function Contents() {
             const videosSnap = await getDocs(query(collection(db, "gallery_videos")));
 
             const images = imagesSnap.docs.map(doc => ({
-                id: doc.id,
                 ...doc.data(),
+                id: doc.id, // Actual Firestore Document ID for deletion
                 type: 'image'
             })) as Artifact[];
 
             let videos = videosSnap.docs.map(doc => ({
-                id: doc.id,
                 ...doc.data(),
+                id: doc.id, // Actual Firestore Document ID for deletion
                 type: 'video'
             })) as Artifact[];
 
@@ -72,10 +73,12 @@ export default function Contents() {
                 if (heroDoc.exists()) {
                     const data = heroDoc.data();
                     videos = [{
-                        id: data.id || "main-hero",
+                        ...data, // Spread existing data first
+                        id: "hero", // Special ID to identify the site_content doc
                         title: data.title || "Current Hero",
                         description: data.description || "Active sequence",
                         videoUrl: data.videoUrl,
+                        publicId: data.publicId, // Ensure publicId is included
                         imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : undefined),
                         type: 'video',
                         createdAt: data.updatedAt ? { seconds: new Date(data.updatedAt).getTime() / 1000 } : null
@@ -100,15 +103,81 @@ export default function Contents() {
     };
 
     const handleDelete = async (artifact: Artifact) => {
-        if (!window.confirm(`Are you sure you want to de-index ${artifact.title.toLowerCase()}?`)) return;
+        if (!window.confirm(`Are you sure you want to de-index ${artifact.title.toLowerCase()}? This will permanently remove it from the cloud and database.`)) return;
+
+        const loadingToast = toast.loading(`Terminating ${artifact.type} resource...`);
 
         try {
-            const collectionName = artifact.type === 'image' ? 'gallery_images' : 'gallery_videos';
-            await deleteDoc(doc(db, collectionName, artifact.id));
+            // 1. Cloudinary Termination Sequence
+            const cloudName = 'dwm2smxdk';
+            const apiKey = '229614895851864';
+            const apiSecret = '7F_je2wrqmJO6nasNJZqb0uwmhU';
+
+            let publicId = artifact.publicId;
+
+            // Fallback: If publicId is missing (legacy), try to extract it from URL
+            if (!publicId) {
+                const url = artifact.videoUrl || artifact.imageUrl;
+                if (url && url.includes('cloudinary.com')) {
+                    const parts = url.split('/');
+                    const filename = parts[parts.length - 1].split('.')[0];
+                    const folder = parts[parts.length - 2];
+                    // Common folders: amora_cinematics, amora_gallery
+                    if (folder === 'amora_cinematics' || folder === 'amora_gallery') {
+                        publicId = `${folder}/${filename}`;
+                    } else {
+                        publicId = filename;
+                    }
+                }
+            }
+
+            if (publicId && !artifact.id.includes('main-hero')) {
+                const timestamp = Math.round(new Date().getTime() / 1000);
+                const paramString = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+
+                const encoder = new TextEncoder();
+                const data = encoder.encode(paramString);
+                const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+                const formData = new FormData();
+                formData.append('public_id', publicId);
+                formData.append('api_key', apiKey);
+                formData.append('timestamp', timestamp.toString());
+                formData.append('signature', signature);
+
+                const cldResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${artifact.type}/destroy`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!cldResponse.ok) {
+                    console.error("Cloudinary purge failed, but proceeding with database de-indexing.");
+                }
+            }
+
+            // 2. Database De-indexing
+            if (artifact.id === "hero") {
+                // If it's the site_content hero doc
+                await deleteDoc(doc(db, "site_content", "hero"));
+            } else {
+                const collectionName = artifact.type === 'image' ? 'gallery_images' : 'gallery_videos';
+                await deleteDoc(doc(db, collectionName, artifact.id));
+
+                // Also check if this artifact is currently set as the hero by checking ID parity
+                const heroDoc = await getDoc(doc(db, "site_content", "hero"));
+                if (heroDoc.exists() && (heroDoc.data().id === artifact.id || heroDoc.data().videoUrl === artifact.videoUrl)) {
+                    await deleteDoc(doc(db, "site_content", "hero"));
+                }
+            }
+
             setArtifacts(prev => prev.filter(a => a.id !== artifact.id));
-            toast.success("Artifact de-indexed successfully");
+            toast.dismiss(loadingToast);
+            toast.success("Artifact terminated and de-indexed successfully");
         } catch (error) {
-            toast.error("Protocol violation: Failed to delete artifact");
+            toast.dismiss(loadingToast);
+            toast.error("Protocol violation: Failed to terminate artifact");
         }
     };
 
@@ -353,8 +422,11 @@ export default function Contents() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <button onClick={() => handleDelete(art)} className="p-3 rounded-xl bg-red-500/5 text-red-500/40 hover:bg-red-500 hover:text-white transition-all">
-                                    <Trash2 className="w-4 h-4" />
+                                <button
+                                    onClick={() => handleDelete(art)}
+                                    className="p-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all group/del"
+                                >
+                                    <Trash2 className="w-4 h-4 transition-transform group-hover/del:scale-110" />
                                 </button>
                                 <button className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all">
                                     <MoreVertical className="w-4 h-4" />

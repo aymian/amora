@@ -141,7 +141,7 @@ export default function ShortVideos() {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             if (user) {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
-                setUserData(userDoc.exists() ? userDoc.data() : { plan: "free" });
+                setUserData(userDoc.exists() ? { id: user.uid, ...userDoc.data() } : { id: user.uid, plan: "free" });
                 await fetchVideos();
             } else {
                 navigate("/login");

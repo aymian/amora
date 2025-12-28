@@ -52,7 +52,7 @@ export default function Watch() {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             if (user) {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
-                if (userDoc.exists()) setUserData(userDoc.data());
+                if (userDoc.exists()) setUserData({ id: user.uid, ...userDoc.data() });
             }
         });
         return () => unsubscribe();
