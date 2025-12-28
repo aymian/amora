@@ -12,15 +12,16 @@ import {
     ArrowRight
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
     const [userData, setUserData] = useState<any>(null);
-    const [heroData, setHeroData] = useState<any>(null);
+    const [heroes, setHeroes] = useState<any[]>([]);
+    const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -37,16 +38,51 @@ export default function Dashboard() {
                         } else {
                             setUserData(data);
                         }
-                    } else {
-                        console.warn("User document not found in Firestore");
-                        setUserData({ fullName: "Explorer", plan: "free" });
                     }
 
-                    // Fetch hero content
-                    const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                    if (heroDoc.exists()) {
-                        setHeroData(heroDoc.data());
+                    // Fetch Hero Rotation (Last 5 videos) - Resilient fetch
+                    let videoHeroes: any[] = [];
+                    try {
+                        const q = query(collection(db, "gallery_videos"), limit(10));
+                        const querySnapshot = await getDocs(q);
+                        videoHeroes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    } catch (e) {
+                        console.warn("Archival gallery fetch failed, using fallback hero only.");
                     }
+
+                    // Also fetch the specific hero doc as priority
+                    let mainHero = null;
+                    try {
+                        const heroDoc = await getDoc(doc(db, "site_content", "hero"));
+                        if (heroDoc.exists()) {
+                            mainHero = { id: 'main-hero', ...heroDoc.data() };
+                        }
+                    } catch (e) {
+                        console.error("Critical: Hero stage fetch failed.");
+                    }
+
+                    // Combine and filter duplicates
+                    const combined = (mainHero ? [mainHero, ...videoHeroes] : videoHeroes)
+                        .filter((item: any) => item && (item.videoUrl || item.imageUrl));
+
+                    // Deduplicate by videoUrl or ID
+                    const deduped = combined.reduce((acc: any[], current: any) => {
+                        const isDuplicate = acc.some(item =>
+                            (item.id === current.id && item.id !== 'main-hero') ||
+                            (item.videoUrl && item.videoUrl === current.videoUrl)
+                        );
+                        if (!isDuplicate) return acc.concat([current]);
+                        return acc;
+                    }, []);
+
+                    // High-fidelity Client-side Sort
+                    const finalHeroes = deduped.sort((a, b) => {
+                        const timeA = a.createdAt?.seconds || (a.updatedAt ? new Date(a.updatedAt).getTime() / 1000 : 0);
+                        const timeB = b.createdAt?.seconds || (b.updatedAt ? new Date(b.updatedAt).getTime() / 1000 : 0);
+                        return timeB - timeA;
+                    }).slice(0, 6); // Keep the top 6 artifacts
+
+                    setHeroes(finalHeroes);
                 } else {
                     navigate("/login");
                 }
@@ -60,6 +96,19 @@ export default function Dashboard() {
 
         return () => unsubscribe();
     }, [navigate]);
+
+    // Auto-slide Timer (10 seconds)
+    useEffect(() => {
+        if (heroes.length <= 1) return;
+
+        const timer = setInterval(() => {
+            setCurrentHeroIndex((prev) => (prev + 1) % heroes.length);
+        }, 10000);
+
+        return () => clearInterval(timer);
+    }, [heroes.length]);
+
+    const heroData = heroes[currentHeroIndex];
 
     if (loading) {
         return (
@@ -75,55 +124,84 @@ export default function Dashboard() {
     return (
         <DashboardLayout user={userData}>
             {/* Dynamic Hero Banner Section */}
-            <section className="relative group rounded-[40px] overflow-hidden aspect-[21/9] flex items-center p-8 lg:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
-                <div className="absolute inset-0 z-0 bg-[#050505]">
-                    <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
-                    {heroData?.videoUrl ? (
-                        <motion.video
-                            key={heroData.videoUrl}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 1.5 }}
-                            src={heroData.videoUrl}
-                            autoPlay
-                            loop
-                            muted
-                            playsInline
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <img
-                            src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
-                            className="w-full h-full object-cover brightness-50"
-                            alt="Cinema Hero"
-                        />
-                    )}
+            <section className="relative group rounded-[40px] overflow-hidden aspect-[21/9] flex items-center p-8 lg:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] bg-black">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={heroData?.videoUrl || 'static'}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1 }}
+                        className="absolute inset-0 z-0"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
+                        {heroData?.videoUrl ? (
+                            <video
+                                src={heroData.videoUrl}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <img
+                                src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
+                                className="w-full h-full object-cover brightness-50"
+                                alt="Cinema Hero"
+                            />
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+
+                <div className="relative z-20 max-w-2xl space-y-6">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={heroData?.title || 'loading'}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.5 }}
+                            className="space-y-6"
+                        >
+                            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[#e9c49a]/10 border border-[#e9c49a]/20 text-[#e9c49a] text-[10px] uppercase tracking-[0.3em] font-bold">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                {currentHeroIndex === 0 ? 'Featured Sequence' : 'Archival Resonance'}
+                            </div>
+                            <div className="space-y-3">
+                                <h3 className="text-2xl lg:text-5xl font-display font-light leading-tight tracking-tight max-w-lg">
+                                    {heroData?.title || 'Initializing Cinema...'}
+                                </h3>
+                                <p className="text-white/50 text-xs lg:text-sm font-light leading-relaxed max-w-md line-clamp-2">
+                                    {heroData?.description || "Synchronizing with your personalized cinematic feed..."}
+                                </p>
+                            </div>
+                            <Button
+                                onClick={() => {
+                                    const videoId = heroData?.id || 'main-hero';
+                                    navigate(`/watch?id=${videoId}`);
+                                }}
+                                className="h-12 px-8 rounded-full bg-white text-black hover:bg-[#e9c49a] hover:text-black transition-all duration-500 font-bold group shadow-xl text-xs uppercase tracking-widest"
+                            >
+                                Watch Sequence
+                                <Play className="ml-2 w-4 h-4 fill-current" />
+                            </Button>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
-                <div className="relative z-20 max-w-2xl space-y-6 animate-in fade-in slide-in-from-left-8 duration-1000">
-                    <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[#e9c49a]/10 border border-[#e9c49a]/20 text-[#e9c49a] text-[10px] uppercase tracking-[0.3em] font-bold">
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {heroData?.videoUrl ? 'New Arrival' : 'Spotlight Choice'}
-                    </div>
-                    <div className="space-y-3">
-                        <h3 className="text-2xl lg:text-4xl font-display font-light leading-tight tracking-tight max-w-md">
-                            {heroData?.title || 'The Art of Emotion'}
-                        </h3>
-                        <p className="text-white/50 text-xs lg:text-sm font-light leading-relaxed max-w-sm line-clamp-2">
-                            {heroData?.description || "Your personalized cinematic feed is curated based on your recent resonance with abstract narratives."}
-                        </p>
-                    </div>
-                    <Button
-                        onClick={() => {
-                            const nameSlug = encodeURIComponent(heroData?.title || 'hero-cinema');
-                            const videoId = heroData?.id || 'main-hero';
-                            navigate(`/watch?id=${nameSlug}&id=${videoId}`);
-                        }}
-                        className="h-12 px-8 rounded-full bg-white text-black hover:bg-[#e9c49a] hover:text-black transition-all duration-500 font-bold group shadow-xl text-xs uppercase tracking-widest"
-                    >
-                        Watch Now
-                        <Play className="ml-2 w-4 h-4 fill-current" />
-                    </Button>
+                {/* Slide Indicators */}
+                <div className="absolute bottom-10 right-10 z-30 flex gap-3">
+                    {heroes.map((_, idx) => (
+                        <div
+                            key={idx}
+                            onClick={() => setCurrentHeroIndex(idx)}
+                            className={cn(
+                                "h-1 transition-all duration-500 rounded-full cursor-pointer",
+                                idx === currentHeroIndex ? "w-8 bg-[#e9c49a]" : "w-4 bg-white/20 hover:bg-white/40"
+                            )}
+                        />
+                    ))}
                 </div>
             </section>
 

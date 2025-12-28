@@ -35,6 +35,7 @@ import {
     Library,
     DollarSign,
     Lock,
+    Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -188,7 +189,8 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     { icon: Film, label: "Creator Studio", path: "/creator-studio", special: true },
                     { icon: Image, label: "Images", path: "/images" },
                     { icon: PlusSquare, label: "Upload Content", path: "/upload" },
-                    { icon: Library, label: "Stories Manager", path: "/manager" },
+                    { icon: Flame, label: "Contents", path: "/manager/contents" },
+                    { icon: Library, label: "Nexus Command", path: "/manager/nexus" },
                     { icon: Users, label: "Followers", path: "/followers" },
                     { icon: DollarSign, label: "Earnings", path: "/earnings" },
                     { icon: BarChart3, label: "Analytics", path: "/analytics" },

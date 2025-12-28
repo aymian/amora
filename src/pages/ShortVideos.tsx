@@ -159,7 +159,7 @@ export default function ShortVideos() {
                         title: data.title || "Current Hero",
                         description: data.description || "Active sequence",
                         videoUrl: data.videoUrl,
-                        imageUrl: data.imageUrl || data.videoUrl.replace(/\.[^/.]+$/, ".jpg"),
+                        imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : ""),
                         createdAt: data.updatedAt ? { seconds: new Date(data.updatedAt).getTime() / 1000 } : null
                     }] as VideoArtifact[];
                 }

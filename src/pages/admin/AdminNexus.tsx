@@ -66,7 +66,7 @@ const AdminNexus = () => {
         { id: 'payments', icon: CreditCard, label: 'Pending Payments', alert: true },
         { id: 'upload', icon: UploadCloud, label: 'Media Lab', path: '/manager/upload' },
         { id: 'image-upload', icon: ImageIcon, label: 'Visual Lab', path: '/manager/image-upload' },
-        { id: 'content', icon: Flame, label: 'Archives', path: '/manager/contents' },
+        { id: 'content', icon: Flame, label: 'Contents', path: '/manager/contents' },
         { id: 'users', icon: Users, label: 'Citizens' },
         { id: 'analytics', icon: Activity, label: 'System Pulse' },
         { id: 'settings', icon: Settings, label: 'Nexus Settings' },
