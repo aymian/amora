@@ -439,6 +439,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         items: [
                             { icon: LayoutGrid, label: "Dashboard", path: "/dashboard" },
                             { icon: PlusSquare, label: "Upload Content", path: "/upload" },
+                            { icon: Video, label: "Create Short", path: "/create-short" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },

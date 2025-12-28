@@ -153,23 +153,13 @@ export default function ShortVideos() {
 
     const fetchVideos = async () => {
         try {
-            const q = query(collection(db, "gallery_videos"));
+            const q = query(collection(db, "shorts"));
             const querySnapshot = await getDocs(q);
             let videoData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VideoArtifact[];
 
             if (videoData.length === 0) {
-                const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                if (heroDoc.exists()) {
-                    const data = heroDoc.data();
-                    videoData = [{
-                        id: data.id || "current-hero",
-                        title: data.title || "Current Hero",
-                        description: data.description || "Active sequence",
-                        videoUrl: data.videoUrl,
-                        imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : ""),
-                        createdAt: data.updatedAt ? { seconds: new Date(data.updatedAt).getTime() / 1000 } : null
-                    }] as VideoArtifact[];
-                }
+                // No fallback to hero for shorts - they must be created via Create Short page
+                videoData = [];
             }
             setVideos(videoData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
         } catch (error) {
