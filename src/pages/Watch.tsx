@@ -39,7 +39,7 @@ export default function Watch() {
 
     // Video State
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [playing, setPlaying] = useState(false);
+    const [playing, setPlaying] = useState(true); // Default to true since autoPlay is on
     const [played, setPlayed] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(0.8);
@@ -47,24 +47,37 @@ export default function Watch() {
     const [showControls, setShowControls] = useState(true);
     const controlsTimeoutRef = useRef<any>(null);
 
+    // 1. Auth Observer
     useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) setUserData(userDoc.data());
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // 2. Data Fetcher & Navigation Reset
+    useEffect(() => {
+        window.scrollTo(0, 0);
+
         const fetchData = async () => {
             setLoading(true);
             try {
-                // 1. Fetch User Data
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        const userDoc = await getDoc(doc(db, "users", user.uid));
-                        if (userDoc.exists()) setUserData(userDoc.data());
-                    }
-                });
-
-                // 2. Fetch Active Artifact
+                // Fetch Active Artifact
                 if (artifactId) {
-                    const artDoc = await getDoc(doc(db, "gallery_videos", artifactId));
+                    // Try gallery_videos first
+                    let artDoc = await getDoc(doc(db, "gallery_videos", artifactId));
+                    if (!artDoc.exists()) {
+                        // Fallback to images if needed (legacy support)
+                        artDoc = await getDoc(doc(db, "gallery_images", artifactId));
+                    }
+
                     if (artDoc.exists()) {
                         setVideoData(artDoc.data());
                     } else {
+                        // Global Hero Fallback
                         const heroDoc = await getDoc(doc(db, "site_content", "hero"));
                         if (heroDoc.exists()) setVideoData(heroDoc.data());
                     }
@@ -73,15 +86,16 @@ export default function Watch() {
                     if (heroDoc.exists()) setVideoData(heroDoc.data());
                 }
 
-                // 3. Fetch Next Sequences (Gallery Videos)
-                const q = query(collection(db, "gallery_videos"), limit(8));
+                // Fetch Next Sequences
+                const q = query(collection(db, "gallery_videos"), limit(12));
                 const querySnapshot = await getDocs(q);
                 setNextSequences(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
             } catch (error) {
                 console.error("Theater Fetch Error:", error);
             } finally {
-                setTimeout(() => setLoading(false), 800);
+                setLoading(false);
+                setPlaying(true); // Reset playback state for new video
             }
         };
 
@@ -90,9 +104,13 @@ export default function Watch() {
 
     const handleTogglePlay = () => {
         if (videoRef.current) {
-            if (playing) videoRef.current.pause();
-            else videoRef.current.play();
-            setPlaying(!playing);
+            if (videoRef.current.paused) {
+                videoRef.current.play();
+                setPlaying(true);
+            } else {
+                videoRef.current.pause();
+                setPlaying(false);
+            }
         }
     };
 
@@ -228,37 +246,46 @@ export default function Watch() {
 
                         {/* Metadata Section */}
                         <div className="space-y-12">
-                            <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-10">
-                                <div className="space-y-6 flex-1">
-                                    <h1 className="text-xl md:text-2xl font-display font-light text-white tracking-tight leading-relaxed">
+                            <div className="space-y-10">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] font-bold text-[#e9c49a]/40">
+                                        <Activity className="w-3.5 h-3.5" /> High-Fidelity Artifact
+                                    </div>
+                                    <h1 className="text-2xl md:text-4xl font-display font-light text-white tracking-tight leading-tight">
                                         {artifactHandle}
                                     </h1>
-                                    <div className="flex flex-wrap items-center gap-8">
-                                        <div className="flex items-center gap-4 group">
-                                            <Avatar className="w-14 h-14 ring-4 ring-white/5 group-hover:ring-[#e9c49a]/20 transition-all duration-500 shadow-2xl">
-                                                <AvatarImage src={userData?.photoURL} />
-                                                <AvatarFallback className="bg-white/5 font-serif">{userData?.fullName?.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-base font-bold text-white group-hover:text-[#e9c49a] transition-colors">{userData?.fullName || "Elite Citizen"}</span>
-                                                <span className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold opacity-60">{userData?.plan || "Explorer"} Protocol</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-10 w-[1px] bg-white/5 hidden sm:block" />
-                                        <button className="px-8 py-3.5 rounded-3xl bg-white text-black text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#e9c49a] transition-all shadow-[0_20px_40px_rgba(255,255,255,0.05)] active:scale-95">Synchronize Link</button>
-                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    <button className="flex items-center gap-3 px-7 py-4 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-[#e9c49a]/10 hover:border-[#e9c49a]/30 transition-all text-white/40 hover:text-[#e9c49a] group">
-                                        <Heart className="w-5 h-5 group-hover:scale-110 transition-transform" /> <span className="text-[10px] font-bold uppercase tracking-widest">Resonate</span>
-                                    </button>
-                                    <button className="flex items-center gap-3 px-7 py-4 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-[#e9c49a]/10 hover:border-[#e9c49a]/30 transition-all text-white/40 hover:text-[#e9c49a] group">
-                                        <Share2 className="w-5 h-5 group-hover:rotate-12 transition-transform" /> <span className="text-[10px] font-bold uppercase tracking-widest">Pulse</span>
-                                    </button>
-                                    <button className="w-16 h-16 flex items-center justify-center rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white">
-                                        <Download className="w-5 h-5" />
-                                    </button>
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-white/5">
+                                    <div className="flex items-center gap-6">
+                                        <Avatar className="w-16 h-16 ring-4 ring-white/5 shadow-2xl">
+                                            <AvatarImage src={userData?.photoURL} />
+                                            <AvatarFallback className="bg-white/5 font-serif text-[#e9c49a]">{userData?.fullName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex flex-col">
+                                            <span className="text-lg font-bold text-white mb-0.5">{userData?.fullName || "Elite Citizen"}</span>
+                                            <span className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold opacity-60">{userData?.plan || "Explorer"} Protocol</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <button className="px-8 py-4 rounded-2xl bg-white text-black text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#e9c49a] transition-all shadow-[0_20px_40px_rgba(255,255,255,0.05)] active:scale-95">
+                                            Synchronize Link
+                                        </button>
+                                        <button className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/10 hover:border-[#e9c49a]/30 transition-all text-white/40 hover:text-[#e9c49a] group">
+                                            <Heart className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Resonate</span>
+                                            <span className="text-[10px] font-bold sm:hidden">Like</span>
+                                        </button>
+                                        <button className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/10 hover:border-[#e9c49a]/30 transition-all text-white/40 hover:text-[#e9c49a] group">
+                                            <Share2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Pulse</span>
+                                            <span className="text-[10px] font-bold sm:hidden">Share</span>
+                                        </button>
+                                        <button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white">
+                                            <Download className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
