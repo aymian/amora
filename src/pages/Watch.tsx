@@ -61,7 +61,7 @@ export default function Watch() {
 
                 // 2. Fetch Active Artifact
                 if (artifactId) {
-                    const artDoc = await getDoc(doc(db, "gallery_images", artifactId));
+                    const artDoc = await getDoc(doc(db, "gallery_videos", artifactId));
                     if (artDoc.exists()) {
                         setVideoData(artDoc.data());
                     } else {
@@ -73,8 +73,8 @@ export default function Watch() {
                     if (heroDoc.exists()) setVideoData(heroDoc.data());
                 }
 
-                // 3. Fetch Next Sequences (Gallery Images as thumbnails)
-                const q = query(collection(db, "gallery_images"), limit(8));
+                // 3. Fetch Next Sequences (Gallery Videos)
+                const q = query(collection(db, "gallery_videos"), limit(8));
                 const querySnapshot = await getDocs(q);
                 setNextSequences(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
