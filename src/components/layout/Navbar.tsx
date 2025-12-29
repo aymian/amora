@@ -60,12 +60,13 @@ export function Navbar() {
               className="hidden sm:flex text-white/50 hover:text-[#e9c49a] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
               onClick={() => navigate("/login")}
             >
-              Director Login
+              Welcome Back
             </Button>
             <Button
               className="hidden sm:flex h-11 px-8 rounded-xl bg-gradient-to-br from-[#e9c49a] via-[#b48c5c] to-[#876445] text-black text-[11px] font-bold uppercase tracking-[0.2em] shadow-[0_10px_20px_rgba(233,196,154,0.15)] hover:shadow-[0_15px_30px_rgba(233,196,154,0.25)] hover:scale-[1.02] transition-all"
+              onClick={() => navigate("/signup")}
             >
-              Enter the Archive
+              Begin Your Story
             </Button>
 
             {/* Mobile Menu Button */}
@@ -114,10 +115,16 @@ export function Navbar() {
                   setIsMobileMenuOpen(false);
                 }}
               >
-                Sign In
+                Welcome Back
               </Button>
-              <Button className="w-full justify-center bg-gradient-to-r from-[#8b6544] to-[#4a2c2a] border-[#e9c49a]/30">
-                Start trial
+              <Button
+                className="w-full justify-center bg-gradient-to-r from-[#8b6544] to-[#4a2c2a] border-[#e9c49a]/30"
+                onClick={() => {
+                  navigate("/signup");
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Begin Your Story
               </Button>
             </div>
           </div>
