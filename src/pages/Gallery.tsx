@@ -52,10 +52,31 @@ export default function Gallery() {
     useEffect(() => {
         const fetchImages = async () => {
             try {
-                const q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                const imageList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setImages(imageList);
+                // Try gallery_images first
+                let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"));
+                let querySnapshot = await getDocs(q);
+                let imageList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // If gallery is empty, try videos and shorts
+                if (imageList.length === 0) {
+                    const vq = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"));
+                    const sq = query(collection(db, "shorts"), orderBy("createdAt", "desc"));
+                    
+                    const [vSnap, sSnap] = await Promise.all([getDocs(vq), getDocs(sq)]);
+                    
+                    const vList = vSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    const sList = sSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    imageList = [...vList, ...sList];
+                }
+
+                // Apply thumbnail logic for video assets
+                const processedList = imageList.map((item: any) => ({
+                    ...item,
+                    imageUrl: item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : null)
+                })).filter(item => item.imageUrl);
+
+                setImages(processedList);
             } catch (error) {
                 console.error("Error fetching gallery:", error);
             } finally {
@@ -108,7 +129,7 @@ export default function Gallery() {
                     <div className="absolute top-0 left-0 w-64 h-64 bg-[#e9c49a]/5 blur-[100px] rounded-full -ml-32 -mt-32" />
 
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 relative">
-                        <div className="space-y-6">
+                        <div className="space-y-6 flex-1">
                             <motion.div
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -134,10 +155,30 @@ export default function Gallery() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.2 }}
-                                className="text-white/40 text-lg font-light max-w-2xl leading-relaxed font-sans"
+                                className="text-white/40 text-lg font-light max-w-xl leading-relaxed font-sans"
                             >
-                                A curated museum of high-fidelity artifacts. Each image is a synchronized capture of the Amora emotional spectrum.
+                                A consolidated museum of high-fidelity artifacts and cinematic stories. Every frame is a unique perspective.
                             </motion.p>
+                        </div>
+
+                        {/* Restored Hero Artifact Cards (Featured Selection) */}
+                        <div className="hidden xl:flex items-center gap-6 h-[200px]">
+                            {images.slice(0, 2).map((img, idx) => (
+                                <motion.div
+                                    key={`hero-${idx}`}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.4 + (idx * 0.1) }}
+                                    className="w-32 h-44 rounded-2xl overflow-hidden border border-white/10 relative group cursor-pointer"
+                                    onClick={() => setSelectedImage(img)}
+                                >
+                                    <img src={img.imageUrl} className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700" alt="" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                                    <div className="absolute bottom-3 left-3">
+                                        <div className="w-1 h-8 bg-[#e9c49a] rounded-full" />
+                                    </div>
+                                </motion.div>
+                            ))}
                         </div>
 
                         <motion.div

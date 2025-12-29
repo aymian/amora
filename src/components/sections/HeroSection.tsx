@@ -28,18 +28,36 @@ export function HeroSection() {
   useEffect(() => {
     const fetchHeroContent = async () => {
       try {
-        // Try gallery_images first as they are high-fidelity artifacts
-        let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"), limit(3));
+        setLoading(true);
+        // Step 1: Try high-fidelity gallery images
+        let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"), limit(4));
         let querySnapshot = await getDocs(q);
+        let assets = querySnapshot.docs.map(doc => ({ ...doc.data() }));
 
-        if (querySnapshot.empty) {
-          // Fallback to shorts if gallery is empty
-          q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(3));
-          querySnapshot = await getDocs(q);
+        // Step 2: If sparse, pull from gallery videos
+        if (assets.length < 3) {
+          const vq = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(4));
+          const vSnapshot = await getDocs(vq);
+          const vAssets = vSnapshot.docs.map(doc => ({ ...doc.data() }));
+          assets = [...assets, ...vAssets];
         }
 
-        const images = querySnapshot.docs.map(doc => doc.data().imageUrl).filter(img => img);
-        setHeroImages(images);
+        // Step 3: Final fallback to cinematic shorts
+        if (assets.length < 3) {
+          const sq = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(4));
+          const sSnapshot = await getDocs(sq);
+          const sAssets = sSnapshot.docs.map(doc => ({ ...doc.data() }));
+          assets = [...assets, ...sAssets];
+        }
+
+        // Map to image URLs with Cloudinary thumbnail fallback for videos
+        const imageList = assets.map((asset: any) => {
+          if (asset.imageUrl) return asset.imageUrl;
+          if (asset.videoUrl) return asset.videoUrl.replace(/\.[^/.]+$/, ".jpg");
+          return null;
+        }).filter(url => url);
+
+        setHeroImages(imageList);
       } catch (error) {
         console.error("Error fetching hero content:", error);
       } finally {
