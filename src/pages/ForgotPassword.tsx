@@ -6,6 +6,7 @@ import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import emailjs from "@emailjs/browser";
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
@@ -21,22 +22,8 @@ export default function ForgotPassword() {
             // 1. Generate a 6-digit OTP
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-            // 2. Store OTP in Firestore with the "Trigger Email" schema
+            // 2. Store OTP in Firestore (Matches your free security rules)
             await addDoc(collection(db, "password_resets"), {
-                to: email.toLowerCase(),
-                message: {
-                    subject: "Your Amora Identity Resonance Code",
-                    html: `
-                        <div style="font-family: sans-serif; padding: 40px; background-color: #050505; color: #ffffff; text-align: center; border-radius: 20px;">
-                            <h1 style="color: #e9c49a; font-weight: 300; letter-spacing: 2px;">AMORA</h1>
-                            <p style="color: rgba(255,255,255,0.6); margin-bottom: 30px;">Initialize your identity recovery with the secure code below.</p>
-                            <div style="background-color: rgba(233, 196, 154, 0.1); padding: 20px; border-radius: 12px; display: inline-block; border: 1px solid rgba(233, 196, 154, 0.3);">
-                                <span style="font-size: 32px; letter-spacing: 10px; color: #e9c49a; font-weight: bold;">${otpCode}</span>
-                            </div>
-                            <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 30px;">This code expires in 10 minutes. If you did not request this, please ignore this transmission.</p>
-                        </div>
-                    `
-                },
                 email: email.toLowerCase(),
                 code: otpCode,
                 createdAt: serverTimestamp(),
@@ -44,14 +31,32 @@ export default function ForgotPassword() {
                 used: false
             });
 
-            // 3. Inform the user (In a real app, a Cloud Function would trigger an email here)
-            toast.success("Security code generated.");
+            // 3. EmailJS TRANSMISSION (100% Free Mode)
+            // Replace these with your IDs from emailjs.com
+            const SERVICE_ID = "service_kb74jmv";
+            const TEMPLATE_ID = "template_1hwn5za";
+            const PUBLIC_KEY = "JN2NHWNzO5skAzoTv";
 
-            // For demo/development purposes, we'll log it or just navigate
-            // In production, the user would check their email.
+            if (SERVICE_ID !== "service_kb74jmv") {
+                await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
+                    to_email: email.toLowerCase(),
+                    otp_code: otpCode,
+                    app_name: "Amora Experience"
+                }, PUBLIC_KEY);
+
+                toast.success("Identity Resonance dispatched to your inbox.");
+            } else {
+                // Dev Log/Fallback if IDs aren't set yet
+                console.log("EmailJS IDs not configured. Bypass code:", otpCode);
+                toast.success("Dev Mode: Check Console for code", {
+                    description: `OTP: ${otpCode}`,
+                    duration: 10000
+                });
+            }
+
             setTimeout(() => {
                 navigate("/reset-password", { state: { email: email.toLowerCase() } });
-            }, 1500);
+            }, 3000);
 
         } catch (error: any) {
             toast.error(error.message);
