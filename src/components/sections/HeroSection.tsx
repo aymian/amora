@@ -29,26 +29,33 @@ export function HeroSection() {
     const fetchHeroContent = async () => {
       try {
         setLoading(true);
-        // Step 1: Try high-fidelity gallery images
-        let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"), limit(4));
-        let querySnapshot = await getDocs(q);
-        let assets = querySnapshot.docs.map(doc => ({ ...doc.data() }));
+        // Helper to fetch documents with fallback for missing createdAt or index
+        const fetchCollection = async (collName: string, max: number) => {
+          try {
+            // First try sorted
+            const q = query(collection(db, collName), orderBy("createdAt", "desc"), limit(max));
+            const snap = await getDocs(q);
+            if (!snap.empty) return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Step 2: If sparse, pull from gallery videos
-        if (assets.length < 3) {
-          const vq = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(4));
-          const vSnapshot = await getDocs(vq);
-          const vAssets = vSnapshot.docs.map(doc => ({ ...doc.data() }));
-          assets = [...assets, ...vAssets];
-        }
+            // If empty, try unsorted (maybe no createdAt field or index)
+            const q2 = query(collection(db, collName), limit(max));
+            const snap2 = await getDocs(q2);
+            return snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          } catch (err) {
+            console.warn(`Ordered fetch failed for ${collName}, falling back to unsorted`, err);
+            const q3 = query(collection(db, collName), limit(max));
+            const snap3 = await getDocs(q3);
+            return snap3.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          }
+        };
 
-        // Step 3: Final fallback to cinematic shorts
-        if (assets.length < 3) {
-          const sq = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(4));
-          const sSnapshot = await getDocs(sq);
-          const sAssets = sSnapshot.docs.map(doc => ({ ...doc.data() }));
-          assets = [...assets, ...sAssets];
-        }
+        const imageAssets = await fetchCollection("gallery_images", 4);
+        const videoAssets = await fetchCollection("gallery_videos", 4);
+        const shortAssets = await fetchCollection("shorts", 4);
+
+        let assets = [...imageAssets];
+        if (assets.length < 3) assets = [...assets, ...videoAssets];
+        if (assets.length < 3) assets = [...assets, ...shortAssets];
 
         // Map to image URLs with Cloudinary thumbnail fallback for videos
         const imageList = assets.map((asset: any) => {

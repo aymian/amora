@@ -52,21 +52,33 @@ export default function Gallery() {
     useEffect(() => {
         const fetchImages = async () => {
             try {
+                const fetchCollection = async (collName: string) => {
+                    try {
+                        const q = query(collection(db, collName), orderBy("createdAt", "desc"));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                        // Fallback if empty (missing fields)
+                        const q2 = query(collection(db, collName));
+                        const snap2 = await getDocs(q2);
+                        return snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    } catch (err) {
+                        console.warn(`Gallery fetch failed for ${collName}, falling back`, err);
+                        const q3 = query(collection(db, collName));
+                        const snap3 = await getDocs(q3);
+                        return snap3.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    }
+                };
+
                 // Try gallery_images first
-                let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"));
-                let querySnapshot = await getDocs(q);
-                let imageList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                let imageList = await fetchCollection("gallery_images");
 
                 // If gallery is empty, try videos and shorts
                 if (imageList.length === 0) {
-                    const vq = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"));
-                    const sq = query(collection(db, "shorts"), orderBy("createdAt", "desc"));
-                    
-                    const [vSnap, sSnap] = await Promise.all([getDocs(vq), getDocs(sq)]);
-                    
-                    const vList = vSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const sList = sSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    
+                    const [vList, sList] = await Promise.all([
+                        fetchCollection("gallery_videos"),
+                        fetchCollection("shorts")
+                    ]);
                     imageList = [...vList, ...sList];
                 }
 

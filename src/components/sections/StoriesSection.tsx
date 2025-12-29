@@ -36,9 +36,26 @@ export function StoriesSection() {
   useEffect(() => {
     const fetchStories = async () => {
       try {
-        const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(10));
-        const querySnapshot = await getDocs(q);
-        const fetchedStories = querySnapshot.docs.map((doc, index) => {
+        let docs: any[] = [];
+        try {
+          const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(10));
+          const querySnapshot = await getDocs(q);
+          docs = querySnapshot.docs;
+        } catch (err) {
+          console.warn("Ordered stories fetch failed, falling back to unsorted", err);
+          const q2 = query(collection(db, "shorts"), limit(10));
+          const querySnapshot2 = await getDocs(q2);
+          docs = querySnapshot2.docs;
+        }
+
+        if (docs.length === 0) {
+          // Check if it was purely empty even without sort
+          const q3 = query(collection(db, "shorts"), limit(10));
+          const snap3 = await getDocs(q3);
+          docs = snap3.docs;
+        }
+
+        const fetchedStories = docs.map((doc, index) => {
           const data = doc.data();
           return {
             id: doc.id,
