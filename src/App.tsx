@@ -27,6 +27,8 @@ import Moods from "./pages/Moods";
 import MoodsWatch from "./pages/MoodsWatch";
 import AIGuide from "./pages/AIGuide";
 import EmotionAI from "./pages/EmotionAI";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +65,8 @@ const App = () => (
           <Route path="/moods-watch/:id" element={<MoodsWatch />} />
           <Route path="/ai" element={<AIGuide />} />
           <Route path="/emotion-ai" element={<EmotionAI />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
