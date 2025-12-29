@@ -28,8 +28,16 @@ export function HeroSection() {
   useEffect(() => {
     const fetchHeroContent = async () => {
       try {
-        const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(3));
-        const querySnapshot = await getDocs(q);
+        // Try gallery_images first as they are high-fidelity artifacts
+        let q = query(collection(db, "gallery_images"), orderBy("createdAt", "desc"), limit(3));
+        let querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          // Fallback to shorts if gallery is empty
+          q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(3));
+          querySnapshot = await getDocs(q);
+        }
+
         const images = querySnapshot.docs.map(doc => doc.data().imageUrl).filter(img => img);
         setHeroImages(images);
       } catch (error) {
