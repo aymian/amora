@@ -22,8 +22,11 @@ import UserProfile from "./pages/UserProfile";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import CreateShort from "./pages/admin/CreateShort";
+import MoodsUpload from "./pages/admin/MoodsUpload";
 import Moods from "./pages/Moods";
+import MoodsWatch from "./pages/MoodsWatch";
 import AIGuide from "./pages/AIGuide";
+import EmotionAI from "./pages/EmotionAI";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,8 +58,11 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/create-short" element={<CreateShort />} />
+          <Route path="/moods-uploads" element={<MoodsUpload />} />
           <Route path="/moods" element={<Moods />} />
+          <Route path="/moods-watch/:id" element={<MoodsWatch />} />
           <Route path="/ai" element={<AIGuide />} />
+          <Route path="/emotion-ai" element={<EmotionAI />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

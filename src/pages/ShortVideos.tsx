@@ -13,10 +13,12 @@ import {
     ArrowLeft,
     Sparkles,
     Activity,
-    Play
+    Play,
+    ChevronUp,
+    ChevronDown
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, increment, arrayUnion, arrayRemove } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -27,12 +29,21 @@ interface VideoArtifact {
     videoUrl: string;
     imageUrl: string;
     createdAt: any;
+    likes?: number;
+    likedBy?: string[];
 }
 
 const VideoItem = ({ video, isActive }: { video: VideoArtifact, isActive: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(video.likes || 0);
+
+    useEffect(() => {
+        if (auth.currentUser && video.likedBy?.includes(auth.currentUser.uid)) {
+            setIsLiked(true);
+        }
+    }, [video.likedBy]);
 
     useEffect(() => {
         if (isActive && videoRef.current) {
@@ -48,6 +59,27 @@ const VideoItem = ({ video, isActive }: { video: VideoArtifact, isActive: boolea
             videoRef.current?.pause();
         }
     }, [isActive]);
+
+    const handleLike = async () => {
+        if (!auth.currentUser) return;
+
+        const newIsLiked = !isLiked;
+        setIsLiked(newIsLiked);
+        setLikesCount(prev => newIsLiked ? prev + 1 : prev - 1);
+
+        try {
+            const videoRef = doc(db, "shorts", video.id);
+            await updateDoc(videoRef, {
+                likes: increment(newIsLiked ? 1 : -1),
+                likedBy: newIsLiked ? arrayUnion(auth.currentUser.uid) : arrayRemove(auth.currentUser.uid)
+            });
+        } catch (error) {
+            console.error("Error updating likes:", error);
+            // Revert on error
+            setIsLiked(!newIsLiked);
+            setLikesCount(prev => newIsLiked ? prev - 1 : prev + 1);
+        }
+    };
 
     return (
         <div className="h-full w-full relative snap-start bg-black flex items-center justify-center overflow-hidden">
@@ -90,14 +122,14 @@ const VideoItem = ({ video, isActive }: { video: VideoArtifact, isActive: boolea
 
             {/* Side Controls */}
             <div className="absolute right-4 bottom-24 flex flex-col items-center gap-8 z-20">
-                <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => setIsLiked(!isLiked)}>
+                <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={handleLike}>
                     <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md border transition-all duration-300",
                         isLiked ? "bg-red-500 border-red-500 scale-110" : "bg-white/10 border-white/10 hover:bg-white/20"
                     )}>
                         <Heart className={cn("w-6 h-6 transition-colors", isLiked ? "text-white fill-current" : "text-white")} />
                     </div>
-                    <span className="text-[10px] font-bold text-white shadow-sm">1.2k</span>
+                    <span className="text-[10px] font-bold text-white shadow-sm">{likesCount >= 1000 ? (likesCount / 1000).toFixed(1) + 'k' : likesCount}</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-2 group cursor-pointer">
@@ -115,7 +147,7 @@ const VideoItem = ({ video, isActive }: { video: VideoArtifact, isActive: boolea
                 </div>
 
                 <div className="w-12 h-12 rounded-full bg-black/40 border border-white/20 flex items-center justify-center animate-spin-slow">
-                    <img src={video.imageUrl} className="w-8 h-8 rounded-full object-cover border border-white/20" alt="" />
+                    <img src={video.imageUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop"} className="w-8 h-8 rounded-full object-cover border border-white/20" alt="" />
                 </div>
             </div>
 
@@ -153,15 +185,10 @@ export default function ShortVideos() {
 
     const fetchVideos = async () => {
         try {
-            const q = query(collection(db, "shorts"));
+            const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"));
             const querySnapshot = await getDocs(q);
-            let videoData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VideoArtifact[];
-
-            if (videoData.length === 0) {
-                // No fallback to hero for shorts - they must be created via Create Short page
-                videoData = [];
-            }
-            setVideos(videoData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+            let videoData = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as VideoArtifact[];
+            setVideos(videoData);
         } catch (error) {
             console.error("Fetch error:", error);
         }
@@ -171,6 +198,19 @@ export default function ShortVideos() {
         const index = Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight);
         if (index !== activeIndex) {
             setActiveIndex(index);
+        }
+    };
+
+    const scrollToVideo = (direction: 'up' | 'down') => {
+        if (!containerRef.current) return;
+        const newIndex = direction === 'up' ? activeIndex - 1 : activeIndex + 1;
+        if (newIndex >= 0 && newIndex < videos.length) {
+            const height = containerRef.current.clientHeight;
+            containerRef.current.scrollTo({
+                top: newIndex * height,
+                behavior: 'smooth'
+            });
+            setActiveIndex(newIndex);
         }
     };
 
@@ -187,7 +227,7 @@ export default function ShortVideos() {
 
     return (
         <DashboardLayout user={userData}>
-            <div className="h-[calc(100vh-theme(spacing.24))] lg:h-[calc(100vh-theme(spacing.24))] w-full bg-black overflow-hidden relative">
+            <div className="h-[calc(100vh-theme(spacing.24))] w-full bg-black overflow-hidden relative">
                 {/* Floating Navigation */}
                 <div className="absolute top-8 left-8 z-30 flex items-center gap-6">
                     <button onClick={() => navigate(-1)} className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-all">
@@ -197,6 +237,49 @@ export default function ShortVideos() {
                         <span className="text-[#e9c49a]">For You</span>
                         <div className="w-px h-3 bg-white/20" />
                         <span className="text-white/40">Following</span>
+                    </div>
+                </div>
+
+                {/* Up/Down Arrows - Outside central video container */}
+                <div className="absolute right-12 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-8">
+                    <button
+                        onClick={() => scrollToVideo('up')}
+                        disabled={activeIndex === 0}
+                        className={cn(
+                            "w-16 h-16 rounded-full bg-blue-600/5 border border-blue-500/20 flex items-center justify-center backdrop-blur-3xl transition-all duration-500 group relative shadow-[0_0_50px_rgba(59,130,246,0.1)]",
+                            activeIndex === 0 ? "opacity-10 cursor-not-allowed" : "hover:bg-blue-600 hover:border-blue-400 hover:shadow-[0_0_70px_rgba(59,130,246,0.4)] hover:-translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.2)]"
+                        )}
+                    >
+                        {/* Blue Glow Background */}
+                        <div className="absolute inset-0 rounded-full bg-blue-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ChevronUp className={cn("w-8 h-8 transition-all relative z-10", activeIndex === 0 ? "text-white/20" : "text-blue-400 group-hover:text-white")} />
+                    </button>
+
+                    <button
+                        onClick={() => scrollToVideo('down')}
+                        disabled={activeIndex === videos.length - 1}
+                        className={cn(
+                            "w-16 h-16 rounded-full bg-blue-600/5 border border-blue-500/20 flex items-center justify-center backdrop-blur-3xl transition-all duration-500 group relative shadow-[0_0_50px_rgba(59,130,246,0.1)]",
+                            activeIndex === videos.length - 1 ? "opacity-10 cursor-not-allowed" : "hover:bg-blue-600 hover:border-blue-400 hover:shadow-[0_0_70px_rgba(59,130,246,0.4)] hover:translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.2)]"
+                        )}
+                    >
+                        {/* Blue Glow Background */}
+                        <div className="absolute inset-0 rounded-full bg-blue-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ChevronDown className={cn("w-8 h-8 transition-all relative z-10", activeIndex === videos.length - 1 ? "text-white/20" : "text-blue-400 group-hover:text-white")} />
+                    </button>
+
+                    {/* Position Counter */}
+                    <div className="flex flex-col items-center gap-2 mt-4">
+                        <div className="w-1 h-12 bg-white/5 rounded-full relative overflow-hidden">
+                            <motion.div
+                                className="absolute top-0 left-0 w-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                animate={{ height: `${((activeIndex + 1) / videos.length) * 100}%` }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-blue-400/60 uppercase tracking-tighter">
+                            A-{(activeIndex + 1).toString().padStart(2, '0')}
+                        </span>
                     </div>
                 </div>
 
@@ -242,3 +325,4 @@ export default function ShortVideos() {
         </DashboardLayout>
     );
 }
+

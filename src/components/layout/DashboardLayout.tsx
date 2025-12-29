@@ -345,6 +345,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         label: "Experience",
                         items: [
                             { icon: Smile, label: "Moods", path: "/moods", locked: true },
+                            { icon: Brain, label: "Emotion AI", path: "/emotion-ai", locked: true },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Sparkles, label: "Exclusive Stories", path: "/moods", locked: true },
                         ]
@@ -380,6 +381,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                         label: "Experience",
                         items: [
                             { icon: Smile, label: "Moods", path: "/moods" },
+                            { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
                     },
@@ -416,9 +418,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                     {
                         label: "Experience",
                         items: [
-                            { icon: Brain, label: "Emotion AI 🧠", path: "/emotion-ai" },
-                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Smile, label: "Moods", path: "/moods" },
+                            { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
+                            { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
                         ]
                     },
@@ -451,6 +453,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
                             { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },
                             { icon: Smile, label: "Moods", path: "/moods" },
+                            { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
                     },

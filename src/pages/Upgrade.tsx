@@ -16,8 +16,9 @@ import {
     Cpu
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const plans = [
@@ -109,6 +110,48 @@ export default function Upgrade() {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+
+    const planHierarchy: Record<string, number> = {
+        'free': 0,
+        'pro': 1,
+        'elite': 2,
+        'creator': 3
+    };
+
+    const handlePlanAction = async (targetTier: string) => {
+        if (!userData || !auth.currentUser) return;
+        if (userData.plan === targetTier) return;
+
+        const currentRank = planHierarchy[userData.plan || 'free'];
+        const targetRank = planHierarchy[targetTier];
+
+        if (targetRank > currentRank) {
+            // Upgrade flow
+            navigate(`/payment?tier=${targetTier}`);
+        } else {
+            // Downgrade flow (Instant and Free)
+            setProcessing(true);
+            try {
+                await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                    plan: targetTier
+                });
+
+                setUserData({ ...userData, plan: targetTier });
+
+                toast.success("Protocol Adjusted", {
+                    description: `You have successfully shifted to the ${targetTier.toUpperCase()} frequency.`
+                });
+            } catch (error) {
+                console.error("Downgrade failed:", error);
+                toast.error("Frequency Shift Blocked", {
+                    description: "Our core systems could not process the protocol change. Please retry."
+                });
+            } finally {
+                setProcessing(false);
+            }
+        }
+    };
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -210,14 +253,29 @@ export default function Upgrade() {
                                 </div>
 
                                 <button
-                                    onClick={() => userData?.plan !== plan.tier && navigate(`/payment?tier=${plan.tier}`)}
+                                    onClick={() => handlePlanAction(plan.tier)}
+                                    disabled={processing || userData?.plan === plan.tier}
                                     className={cn(
                                         "w-full mt-12 py-5 rounded-[2rem] font-bold text-[10px] uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-3 active:scale-95 group",
-                                        userData?.plan === plan.tier ? "bg-white/5 text-white/20 cursor-default" : plan.tier === 'creator' ? "bg-white text-black hover:bg-[#e9c49a]" : plan.popular ? "bg-[#e9c49a] text-black hover:bg-white" : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                                        userData?.plan === plan.tier
+                                            ? "bg-white/5 text-white/20 cursor-default"
+                                            : planHierarchy[plan.tier] < planHierarchy[userData?.plan || 'free']
+                                                ? "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white"
+                                                : plan.tier === 'creator'
+                                                    ? "bg-white text-black hover:bg-[#e9c49a]"
+                                                    : plan.popular
+                                                        ? "bg-[#e9c49a] text-black hover:bg-white"
+                                                        : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
                                     )}
                                 >
-                                    {userData?.plan === plan.tier ? "Current Level" : plan.buttonText}
-                                    {userData?.plan !== plan.tier && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                                    {processing && <Activity className="w-4 h-4 animate-spin" />}
+                                    {userData?.plan === plan.tier
+                                        ? "Current Level"
+                                        : planHierarchy[plan.tier] < planHierarchy[userData?.plan || 'free']
+                                            ? "Request Sync (Free)"
+                                            : plan.buttonText
+                                    }
+                                    {userData?.plan !== plan.tier && !processing && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                                 </button>
                             </motion.div>
                         ))}

@@ -209,99 +209,75 @@ export default function Dashboard() {
                 </div>
             </section>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: "Content Watched", value: "48h 12m", icon: Clock, color: "text-blue-400" },
-                    { label: "Resonated Items", value: "256", icon: Heart, color: "text-red-400" },
-                    { label: "Community Rank", value: "Top 2%", icon: TrendingUp, color: "text-emerald-400" },
-                    { label: "Elite Tier", value: userData?.plan === "pro" ? "Pro Member" : "Free Member", icon: Crown, color: "text-[#e9c49a]" },
-                ].map((stat, i) => (
-                    <div key={i} className="bg-white/[0.02] border border-white/5 rounded-[32px] p-8 hover:border-white/10 hover:bg-white/[0.04] transition-all group cursor-default shadow-sm hover:shadow-xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className={cn("w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center transition-all", stat.color)}>
-                                <stat.icon className="w-5 h-5" />
-                            </div>
-                            <div className="w-2 h-2 rounded-full bg-white/10 animate-pulse" />
+            {/* User Identity Phase */}
+            <div className="flex justify-center">
+                <div className="w-full max-w-sm bg-white/[0.02] border border-white/5 rounded-[32px] p-8 hover:border-white/10 hover:bg-white/[0.04] transition-all group cursor-default shadow-sm hover:shadow-xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center transition-all text-[#e9c49a]">
+                            <Crown className="w-5 h-5" />
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">{stat.label}</p>
-                            <h4 className="text-2xl font-display font-light tracking-tight">{stat.value}</h4>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Active Plan</span>
+                            <div className="w-2 h-2 rounded-full bg-[#e9c49a] animate-pulse" />
                         </div>
                     </div>
-                ))}
-            </div>
-
-            {/* Sections Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Continue Watching List */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between px-2">
-                        <h4 className="text-lg font-light tracking-wide flex items-center gap-3">
-                            <History className="w-5 h-5 text-[#e9c49a]" />
-                            Continue Watching
+                    <div className="space-y-1">
+                        <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">Resonance Tier</p>
+                        <h4 className="text-2xl font-display font-light tracking-tight">
+                            {userData?.plan === "pro" ? "Pro Citizen" :
+                                userData?.plan === "elite" ? "Elite Architect" :
+                                    userData?.plan === "creator" ? "Neural Creator" : "Free Citizen"}
                         </h4>
-                        <button className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#e9c49a] hover:text-white transition-colors">See History</button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {[1, 2, 3].map((it) => (
-                            <div key={it} className="group bg-white/[0.01] border border-white/5 rounded-[24px] p-4 flex items-center gap-6 hover:bg-white/[0.03] hover:border-white/10 transition-all cursor-pointer">
-                                <div className="w-32 aspect-video rounded-xl overflow-hidden relative">
-                                    <img src={`https://images.unsplash.com/photo-${1500000000000 + it}?auto=format&fit=crop&q=60&w=200`} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Play className="w-6 h-6 text-white fill-current" />
-                                    </div>
-                                    <div className="absolute bottom-0 left-0 h-1 bg-[#e9c49a]" style={{ width: `${30 + it * 20}%` }} />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <h5 className="font-medium text-white/90 group-hover:text-[#e9c49a] transition-colors tracking-wide">Cinematic Abstract Story #{it}</h5>
-                                    <p className="text-[11px] text-white/30 italic">Chapter {it} • 14 mins remaining</p>
-                                </div>
-                                <ArrowRight className="w-5 h-5 text-white/10 group-hover:text-white group-hover:translate-x-1 transition-all mr-2" />
-                            </div>
-                        ))}
                     </div>
                 </div>
+            </div>
 
-                {/* Discovery Feed Small */}
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between px-2">
-                        <h4 className="text-lg font-light tracking-wide flex items-center gap-3">
-                            <Zap className="w-5 h-5 text-[#e9c49a]" />
-                            New Releases
+            {/* Discovery Feed - New Releases */}
+            <div className="space-y-10">
+                <div className="flex items-center justify-between px-2">
+                    <div className="space-y-2">
+                        <h4 className="text-3xl font-display font-light tracking-tight flex items-center gap-3">
+                            <Zap className="w-6 h-6 text-[#e9c49a]" />
+                            New Artifacts
                         </h4>
+                        <p className="text-[10px] uppercase tracking-[0.4em] text-white/20 font-black">Latest Neural Transmissions Synchronized</p>
                     </div>
+                    <button onClick={() => navigate('/gallery')} className="px-6 py-2 rounded-full border border-white/10 text-[10px] uppercase font-bold tracking-widest hover:bg-white/5 transition-all">Explore Gallery</button>
+                </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                        {newReleases.length > 0 ? (
-                            newReleases.map((item) => (
-                                <div
-                                    key={item.id}
-                                    onClick={() => navigate(`/watch?id=${item.id}`)}
-                                    className="relative aspect-square rounded-[32px] overflow-hidden group cursor-pointer border border-white/5 hover:border-[#e9c49a]/30 transition-all"
-                                >
-                                    <img
-                                        src={item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : "https://images.unsplash.com/photo-1530000000000?auto=format&fit=crop&q=80")}
-                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0"
-                                        alt={item.title}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-8">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <p className="text-[#e9c49a] text-[9px] font-bold uppercase tracking-[0.3em]">Newly Released</p>
-                                            <Sparkles className="w-3 h-3 text-[#e9c49a] animate-pulse" />
-                                        </div>
-                                        <p className="text-xl font-display font-light leading-none mb-1 group-hover:text-[#e9c49a] transition-colors">{item.title}</p>
-                                        <p className="text-white/40 text-[10px] font-light uppercase tracking-widest">{item.category || "Original Cinematic"}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {newReleases.length > 0 ? (
+                        newReleases.map((item) => (
+                            <div
+                                key={item.id}
+                                onClick={() => navigate(`/watch?id=${item.id}`)}
+                                className="relative aspect-square rounded-[40px] overflow-hidden group cursor-pointer border border-white/5 hover:border-[#e9c49a]/30 transition-all duration-700 bg-[#0A0A0A]"
+                            >
+                                <img
+                                    src={item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : "https://images.unsplash.com/photo-1530000000000?auto=format&fit=crop&q=80")}
+                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale group-hover:grayscale-0"
+                                    alt={item.title}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent flex flex-col justify-end p-10">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <p className="text-[#e9c49a] text-[10px] font-black uppercase tracking-[0.3em]">Newly Released</p>
+                                        <Sparkles className="w-3.5 h-3.5 text-[#e9c49a] animate-pulse" />
+                                    </div>
+                                    <p className="text-2xl font-display font-light leading-none mb-2 group-hover:text-[#e9c49a] transition-colors">{item.title}</p>
+                                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em]">{item.category || "Original Cinematic"}</p>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 pointer-events-none">
+                                    <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center">
+                                        <Play className="w-8 h-8 text-white fill-current translate-x-1" />
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="aspect-square rounded-[32px] border border-dashed border-white/5 flex items-center justify-center p-8 text-center bg-white/[0.01]">
-                                <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">Awaiting New Artifacts...</p>
                             </div>
-                        )}
-                    </div>
+                        ))
+                    ) : (
+                        <div className="col-span-full aspect-[21/9] rounded-[40px] border border-dashed border-white/5 flex items-center justify-center p-8 text-center bg-white/[0.01]">
+                            <p className="text-white/20 text-[10px] uppercase tracking-widest font-bold">Awaiting New Artifacts...</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </DashboardLayout>

@@ -78,6 +78,9 @@ export default function Watch() {
                     if (!artDoc.exists()) {
                         artDoc = await getDoc(doc(db, "gallery_images", artifactId));
                     }
+                    if (!artDoc.exists()) {
+                        artDoc = await getDoc(doc(db, "mood_content", artifactId));
+                    }
 
                     if (artDoc.exists()) {
                         setVideoData({ id: artDoc.id, ...artDoc.data() });
@@ -92,7 +95,7 @@ export default function Watch() {
 
                 const q = query(collection(db, "gallery_videos"), limit(12));
                 const querySnapshot = await getDocs(q);
-                setNextSequences(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                setNextSequences(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (error) {
                 console.error("Theater Fetch Error:", error);
             } finally {

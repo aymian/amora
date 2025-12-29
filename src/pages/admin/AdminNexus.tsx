@@ -19,6 +19,7 @@ import {
     Search,
     CheckCircle2,
     XCircle,
+    Heart,
     Image as ImageIcon
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -136,6 +137,7 @@ const AdminNexus = () => {
         { id: 'upload', icon: UploadCloud, label: 'Media Lab', path: '/manager/upload' },
         { id: 'image-upload', icon: ImageIcon, label: 'Visual Lab', path: '/manager/image-upload' },
         { id: 'create-short', icon: Video, label: 'Create Short', path: '/create-short' },
+        { id: 'moods-upload', icon: Heart, label: 'Mood Architecture', path: '/moods-uploads' },
         { id: 'content', icon: Flame, label: 'Contents', path: '/manager/contents' },
         { id: 'users', icon: Users, label: 'Citizens' },
         { id: 'analytics', icon: Activity, label: 'System Pulse' },
