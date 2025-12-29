@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import CreateShort from "./pages/admin/CreateShort";
 import MoodsUpload from "./pages/admin/MoodsUpload";
+import HappyUpload from "./pages/admin/HappyUpload";
 import Moods from "./pages/Moods";
 import MoodsWatch from "./pages/MoodsWatch";
 import AIGuide from "./pages/AIGuide";
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="/messages" element={<Messages />} />
           <Route path="/create-short" element={<CreateShort />} />
           <Route path="/moods-uploads" element={<MoodsUpload />} />
+          <Route path="/happy-upload" element={<HappyUpload />} />
           <Route path="/moods" element={<Moods />} />
           <Route path="/moods-watch/:id" element={<MoodsWatch />} />
           <Route path="/ai" element={<AIGuide />} />

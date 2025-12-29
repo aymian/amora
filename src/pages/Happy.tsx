@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Sun, Heart, Music, ArrowRight, Play, Share2, Download } from "lucide-react";
+import { Sparkles, Sun, Heart, Music, ArrowRight, Play, Share2, Download, Headphones, Volume2 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 export default function Happy() {
     const [userData, setUserData] = useState<any>(null);
     const [happyArtifacts, setHappyArtifacts] = useState<any[]>([]);
+    const [happyTracks, setHappyTracks] = useState<any[]>([]);
+    const [currentTrack, setCurrentTrack] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
@@ -29,14 +32,32 @@ export default function Happy() {
     useEffect(() => {
         const fetchHappyContent = async () => {
             try {
-                // Fetch content that is likely "happy" (we'll filter for energetic/positive moods)
-                const q = query(
+                // Fetch Images
+                const qImage = query(
                     collection(db, "gallery_images"),
                     limit(8)
                 );
-                const querySnapshot = await getDocs(q);
-                const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setHappyArtifacts(items);
+
+                // Fetch Tracks
+                const qTrack = query(
+                    collection(db, "happy_tracks"),
+                    limit(10)
+                );
+
+                const [imgSnap, trackSnap] = await Promise.all([
+                    getDocs(qImage),
+                    getDocs(qTrack)
+                ]);
+
+                const images = imgSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const tracks = trackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                setHappyArtifacts(images);
+                setHappyTracks(tracks);
+
+                if (tracks.length > 0) {
+                    setCurrentTrack(tracks[0]);
+                }
             } catch (error) {
                 console.error("Error fetching happy content:", error);
             } finally {
@@ -108,6 +129,101 @@ export default function Happy() {
                         >
                             <Heart className="w-12 h-12 text-white fill-current" />
                         </motion.div>
+                    </div>
+                </div>
+
+                {/* Euphoric Audio Section */}
+                <div className="space-y-8">
+                    <div className="flex items-center justify-between px-2">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-display font-light text-white tracking-tight">Radiant Tracks</h2>
+                            <p className="text-[10px] uppercase tracking-[0.3em] text-orange-400/60 font-bold">Auditory Resonance Layer</p>
+                        </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-3 gap-10">
+                        {/* Audio Player Card */}
+                        <div className="lg:col-span-1">
+                            <AnimatePresence mode="wait">
+                                {currentTrack ? (
+                                    <motion.div
+                                        key={currentTrack.id}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        className="p-8 rounded-[3rem] bg-gradient-to-br from-orange-500/20 to-orange-950/20 border border-orange-500/20 backdrop-blur-3xl sticky top-24"
+                                    >
+                                        <div className="aspect-square rounded-[2rem] bg-orange-400/10 mb-8 flex items-center justify-center relative overflow-hidden group">
+                                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-transparent animate-pulse" />
+                                            <Music className="w-20 h-20 text-orange-400 opacity-20 group-hover:scale-110 transition-transform duration-700" />
+                                            <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
+                                                <div className="p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
+                                                    <Volume2 className="w-4 h-4 text-orange-400" />
+                                                </div>
+                                                <div className="flex gap-1 items-end h-8">
+                                                    {[1, 2, 3, 4, 5].map((i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            animate={{ height: ["20%", "100%", "40%", "80%", "20%"] }}
+                                                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
+                                                            className="w-1 bg-orange-400/40 rounded-full"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <h3 className="text-2xl font-bold text-white tracking-tight">{currentTrack.title}</h3>
+                                                <p className="text-sm text-orange-200/40 italic mt-1">{currentTrack.description}</p>
+                                            </div>
+
+                                            <audio
+                                                controls
+                                                src={currentTrack.audioUrl}
+                                                className="w-full h-10 filter invert grayscale opacity-60 hover:opacity-100 transition-opacity"
+                                            />
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <div className="h-full min-h-[400px] rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-center">
+                                        <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">No Tracks Synchronized</p>
+                                    </div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Track List */}
+                        <div className="lg:col-span-2 space-y-4">
+                            {happyTracks.map((track) => (
+                                <motion.div
+                                    key={track.id}
+                                    whileHover={{ x: 10 }}
+                                    onClick={() => setCurrentTrack(track)}
+                                    className={cn(
+                                        "p-6 rounded-3xl border transition-all cursor-pointer group flex items-center gap-6",
+                                        currentTrack?.id === track.id
+                                            ? "bg-orange-500/10 border-orange-500/30"
+                                            : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05]"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                                        currentTrack?.id === track.id ? "bg-orange-500 text-black" : "bg-white/5 text-white/20 group-hover:text-orange-400"
+                                    )}>
+                                        <Headphones className="w-5 h-5" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-lg font-bold text-white tracking-tight">{track.title}</h4>
+                                        <p className="text-xs text-white/30 font-light truncate max-w-md">{track.description}</p>
+                                    </div>
+                                    <div className="text-[10px] text-white/10 uppercase tracking-widest font-bold group-hover:text-orange-400 transition-colors">
+                                        {track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toFixed(0).padStart(2, '0')}` : "Radiant"}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
