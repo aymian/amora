@@ -46,6 +46,7 @@ import {
     HelpCircle,
     Bot,
     Sun,
+    CloudRain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -340,6 +341,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: Compass, label: "Explore", path: "/explore" },
                             { icon: Image, label: "Images", path: "/images" },
                             { icon: Sun, label: "Happy Core", path: "/happy" },
+                            { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short Stories (Limited)", path: "/short-videos" },
                         ]
                     },
@@ -376,6 +378,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: Compass, label: "Explore", path: "/explore" },
                             { icon: Image, label: "Images", path: "/images" },
                             { icon: Sun, label: "Happy Core", path: "/happy" },
+                            { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short Stories", path: "/short-videos" },
                             { icon: Film, label: "Videos", path: "/short-videos" },
                         ]
@@ -414,6 +417,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: Compass, label: "Explore", path: "/explore" },
                             { icon: Image, label: "Images", path: "/images" },
                             { icon: Sun, label: "Happy Core", path: "/happy" },
+                            { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short Stories", path: "/short-videos" },
                             { icon: Film, label: "Videos", path: "/watch" },
                             { icon: Sparkles, label: "Exclusive Stories ✨", path: "/exclusive", special: true },
@@ -452,6 +456,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: LayoutGrid, label: "Dashboard", path: "/dashboard" },
                             { icon: PlusSquare, label: "Explore Images", path: "/images" },
                             { icon: Sun, label: "Happy Core", path: "/happy" },
+                            { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short-videos", path: "/short-videos" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
