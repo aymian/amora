@@ -459,6 +459,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short-videos", path: "/short-videos" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
+                            { icon: Sun, label: "Happy Lab", path: "/happy-upload" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
                             { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },

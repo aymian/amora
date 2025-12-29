@@ -1,20 +1,46 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Sun, Heart, Music, ArrowRight, Play, Share2, Download, Headphones, Volume2 } from "lucide-react";
+import {
+    Sparkles,
+    Sun,
+    Music,
+    Play,
+    Pause,
+    SkipBack,
+    SkipForward,
+    Headphones,
+    Volume2,
+    CheckCircle2,
+    Repeat,
+    Shuffle,
+    X,
+    Maximize2,
+    Layers
+} from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, getDocs, limit, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import ReactPlayer from "react-player";
+
+// Dynamic Wrapper to bypass strict JSX type mismatches in different environments
+const DynamicPlayer = (props: any) => {
+    return (
+        <ReactPlayer
+            {...props}
+        />
+    );
+};
 
 export default function Happy() {
     const [userData, setUserData] = useState<any>(null);
-    const [happyArtifacts, setHappyArtifacts] = useState<any[]>([]);
     const [happyTracks, setHappyTracks] = useState<any[]>([]);
     const [currentTrack, setCurrentTrack] = useState<any>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [showPlayerModal, setShowPlayerModal] = useState(false);
     const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+    const [played, setPlayed] = useState(0);
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -30,258 +56,124 @@ export default function Happy() {
     }, []);
 
     useEffect(() => {
-        const fetchHappyContent = async () => {
+        const fetchHappyTracks = async () => {
             try {
-                // Fetch Images
-                const qImage = query(
-                    collection(db, "gallery_images"),
-                    limit(8)
-                );
-
-                // Fetch Tracks
-                const qTrack = query(
+                const q = query(
                     collection(db, "happy_tracks"),
-                    limit(10)
+                    orderBy("createdAt", "desc"),
+                    limit(20)
                 );
-
-                const [imgSnap, trackSnap] = await Promise.all([
-                    getDocs(qImage),
-                    getDocs(qTrack)
-                ]);
-
-                const images = imgSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const tracks = trackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                setHappyArtifacts(images);
+                const querySnapshot = await getDocs(q);
+                const tracks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setHappyTracks(tracks);
 
-                if (tracks.length > 0) {
+                if (tracks.length > 0 && !currentTrack) {
                     setCurrentTrack(tracks[0]);
                 }
             } catch (error) {
-                console.error("Error fetching happy content:", error);
+                console.error("Error fetching happy tracks:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchHappyContent();
+        fetchHappyTracks();
     }, []);
+
+    const handlePlayTrack = (track: any) => {
+        setCurrentTrack(track);
+        setIsPlaying(true);
+        setShowPlayerModal(true);
+    };
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
 
     return (
         <DashboardLayout user={userData}>
-            <div className="space-y-12 pb-32">
-                {/* Hero Stage - Radiant Aura */}
-                <div className="relative pt-12 overflow-hidden rounded-[4rem] bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent border border-white/5 p-12 md:p-20">
-                    <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-orange-500/20 blur-[150px] rounded-full animate-pulse" />
+            <div className="min-h-screen pb-32 space-y-16">
+                {/* Immersive Header - The Aura Hub */}
+                <div className="relative pt-20 pb-12 overflow-hidden rounded-[4rem] bg-gradient-to-b from-orange-500/10 via-black to-black border border-white/5 px-12 md:px-20">
+                    <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-orange-500/10 blur-[150px] rounded-full animate-pulse" />
 
-                    <div className="relative z-10 max-w-3xl space-y-8">
+                    <div className="relative z-10 space-y-6">
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center gap-4"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="w-16 h-16 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400 mb-8 border border-orange-500/30 shadow-[0_0_30px_rgba(249,115,22,0.2)]"
                         >
-                            <div className="px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 backdrop-blur-md">
-                                <span className="text-[10px] uppercase tracking-[0.4em] text-orange-400 font-bold flex items-center gap-2">
-                                    <Sun className="w-3 h-3" /> High Energy Frequency
-                                </span>
-                            </div>
+                            <Sun className="w-8 h-8" />
                         </motion.div>
 
-                        <motion.h1
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-6xl md:text-8xl font-display font-light tracking-tight leading-none text-white"
-                        >
-                            The <span className="text-orange-400 italic font-serif">Euphoria</span> Engine.
-                        </motion.h1>
-
-                        <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-white/60 text-lg md:text-xl font-light max-w-2xl leading-relaxed font-sans"
-                        >
-                            Synchronize your resonance with the purest vibrations of joy. A curated sanctuary of uplifted visuals and radiant narratives.
-                        </motion.p>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="flex flex-wrap gap-4 pt-4"
-                        >
-                            <Button className="h-14 px-8 rounded-2xl bg-orange-500 text-black hover:bg-white transition-all font-bold gap-3 group">
-                                <Music className="w-5 h-5" /> Start Radiant Session
-                            </Button>
-                            <Button variant="outline" className="h-14 px-8 rounded-2xl border-white/10 text-white hover:bg-white/5 transition-all font-light gap-3">
-                                <Sparkles className="w-5 h-5 text-orange-400" /> Discover Joy
-                            </Button>
-                        </motion.div>
-                    </div>
-
-                    {/* Floating Decorative Hearts */}
-                    <div className="absolute right-20 bottom-20 hidden lg:block">
-                        <motion.div
-                            animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }}
-                            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-24 h-24 rounded-3xl bg-gradient-to-br from-orange-400 to-red-500 shadow-[0_20px_40px_rgba(251,146,60,0.4)] flex items-center justify-center"
-                        >
-                            <Heart className="w-12 h-12 text-white fill-current" />
-                        </motion.div>
+                        <h1 className="text-6xl md:text-8xl font-display font-light tracking-tight leading-none text-white">
+                            Happy <span className="text-orange-400 italic font-serif">Aura</span> Hub
+                        </h1>
+                        <p className="text-white/40 text-lg md:text-xl font-light max-w-2xl font-sans tracking-wide">
+                            The auditory sanctuary for radiant frequencies. Synchronize your neural core with verified euphoric tracks.
+                        </p>
                     </div>
                 </div>
 
-                {/* Euphoric Audio Section */}
-                <div className="space-y-8">
-                    <div className="flex items-center justify-between px-2">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-display font-light text-white tracking-tight">Radiant Tracks</h2>
-                            <p className="text-[10px] uppercase tracking-[0.3em] text-orange-400/60 font-bold">Auditory Resonance Layer</p>
+                {/* Track Feed - Unified List */}
+                <div className="space-y-10 px-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                        <div className="flex items-center gap-4">
+                            <Headphones className="w-5 h-5 text-orange-400" />
+                            <h2 className="text-2xl font-display font-light text-white tracking-widest uppercase">Verified Frequencies</h2>
                         </div>
-                    </div>
-
-                    <div className="grid lg:grid-cols-3 gap-10">
-                        {/* Audio Player Card */}
-                        <div className="lg:col-span-1">
-                            <AnimatePresence mode="wait">
-                                {currentTrack ? (
-                                    <motion.div
-                                        key={currentTrack.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        className="p-8 rounded-[3rem] bg-gradient-to-br from-orange-500/20 to-orange-950/20 border border-orange-500/20 backdrop-blur-3xl sticky top-24"
-                                    >
-                                        <div className="aspect-square rounded-[2rem] bg-orange-400/10 mb-8 flex items-center justify-center relative overflow-hidden group">
-                                            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-transparent animate-pulse" />
-                                            <Music className="w-20 h-20 text-orange-400 opacity-20 group-hover:scale-110 transition-transform duration-700" />
-                                            <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
-                                                <div className="p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10">
-                                                    <Volume2 className="w-4 h-4 text-orange-400" />
-                                                </div>
-                                                <div className="flex gap-1 items-end h-8">
-                                                    {[1, 2, 3, 4, 5].map((i) => (
-                                                        <motion.div
-                                                            key={i}
-                                                            animate={{ height: ["20%", "100%", "40%", "80%", "20%"] }}
-                                                            transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
-                                                            className="w-1 bg-orange-400/40 rounded-full"
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-6">
-                                            <div>
-                                                <h3 className="text-2xl font-bold text-white tracking-tight">{currentTrack.title}</h3>
-                                                <p className="text-sm text-orange-200/40 italic mt-1">{currentTrack.description}</p>
-                                            </div>
-
-                                            <audio
-                                                controls
-                                                src={currentTrack.audioUrl}
-                                                className="w-full h-10 filter invert grayscale opacity-60 hover:opacity-100 transition-opacity"
-                                            />
-                                        </div>
-                                    </motion.div>
-                                ) : (
-                                    <div className="h-full min-h-[400px] rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-center">
-                                        <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">No Tracks Synchronized</p>
-                                    </div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Track List */}
-                        <div className="lg:col-span-2 space-y-4">
-                            {happyTracks.map((track) => (
-                                <motion.div
-                                    key={track.id}
-                                    whileHover={{ x: 10 }}
-                                    onClick={() => setCurrentTrack(track)}
-                                    className={cn(
-                                        "p-6 rounded-3xl border transition-all cursor-pointer group flex items-center gap-6",
-                                        currentTrack?.id === track.id
-                                            ? "bg-orange-500/10 border-orange-500/30"
-                                            : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05]"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
-                                        currentTrack?.id === track.id ? "bg-orange-500 text-black" : "bg-white/5 text-white/20 group-hover:text-orange-400"
-                                    )}>
-                                        <Headphones className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-lg font-bold text-white tracking-tight">{track.title}</h4>
-                                        <p className="text-xs text-white/30 font-light truncate max-w-md">{track.description}</p>
-                                    </div>
-                                    <div className="text-[10px] text-white/10 uppercase tracking-widest font-bold group-hover:text-orange-400 transition-colors">
-                                        {track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toFixed(0).padStart(2, '0')}` : "Radiant"}
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Content Grid */}
-                <div className="space-y-8">
-                    <div className="flex items-center justify-between px-2">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-display font-light text-white tracking-tight">Vibrant Artifacts</h2>
-                            <p className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-bold">Resonance Level: 100% Radiant</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-                            <div className="w-2 h-2 rounded-full bg-orange-400/40" />
-                            <div className="w-2 h-2 rounded-full bg-orange-400/20" />
-                        </div>
+                        <span className="text-[10px] uppercase tracking-[0.4em] text-white/20 font-bold">{happyTracks.length} DISCOVERIES</span>
                     </div>
 
                     {loading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="space-y-4">
                             {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="aspect-[9/16] rounded-[3rem] bg-white/[0.02] border border-white/5 animate-pulse" />
+                                <div key={i} className="h-24 rounded-3xl bg-white/[0.02] border border-white/5 animate-pulse" />
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                            {happyArtifacts.map((item, index) => (
+                        <div className="grid grid-cols-1 gap-4">
+                            {happyTracks.map((track, idx) => (
                                 <motion.div
-                                    key={item.id}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: index * 0.1 }}
-                                    className="group relative aspect-[9/16] rounded-[3rem] overflow-hidden bg-black border border-white/5 cursor-pointer shadow-2xl"
+                                    key={track.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    onClick={() => handlePlayTrack(track)}
+                                    className={cn(
+                                        "group relative bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-[2.5rem] p-8 transition-all cursor-pointer flex items-center gap-10",
+                                        currentTrack?.id === track.id && "bg-orange-500/[0.03] border-orange-500/20"
+                                    )}
                                 >
-                                    <img
-                                        src={item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : "")}
-                                        className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 grayscale-[0.5] group-hover:grayscale-0"
-                                        alt=""
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-orange-950/90 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
-
-                                    <div className="absolute inset-0 p-8 flex flex-col justify-end gap-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                        <div className="space-y-1">
-                                            <h3 className="text-xl font-bold text-white tracking-tight">{item.title}</h3>
-                                            <p className="text-xs text-orange-200/60 font-light line-clamp-2 italic">{item.description}</p>
-                                        </div>
-                                        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                                            <button className="flex-1 h-12 rounded-xl bg-orange-400 text-black font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">
-                                                <Play className="w-3 h-3 fill-current" /> Sync
-                                            </button>
-                                            <button className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-orange-400 transition-all">
-                                                <Heart className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                    <div className="w-16 h-16 rounded-3xl bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500 transition-all group-hover:text-black">
+                                        {currentTrack?.id === track.id && isPlaying ? (
+                                            <div className="flex items-end gap-1 h-6">
+                                                {[1, 2, 3].map((i) => (
+                                                    <motion.div
+                                                        key={i}
+                                                        animate={{ height: ["30%", "100%", "50%"] }}
+                                                        transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.1 }}
+                                                        className="w-1 bg-current rounded-full"
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <Play className="w-6 h-6 fill-current" />
+                                        )}
                                     </div>
 
-                                    {/* Radiant Corner Badge */}
-                                    <div className="absolute top-6 left-6 px-3 py-1 rounded-full bg-orange-500/20 backdrop-blur-md border border-orange-500/30">
-                                        <span className="text-[8px] uppercase tracking-widest font-bold text-orange-400">Radiant Asset</span>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="flex items-center gap-4">
+                                            <h3 className="text-2xl font-bold text-white tracking-tight">{track.title}</h3>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-orange-400/40 px-3 py-1 bg-orange-500/5 rounded-full border border-orange-500/10">Synchronized</span>
+                                        </div>
+                                        <p className="text-white/40 font-light text-sm italic max-w-2xl leading-relaxed">
+                                            {track.description}
+                                        </p>
+                                    </div>
+
+                                    <div className="hidden md:flex flex-col items-end gap-2 text-right">
+                                        <span className="text-white/10 text-[10px] uppercase font-bold tracking-widest">Duration</span>
+                                        <span className="text-white text-lg font-mono tracking-tight">
+                                            {track.duration ? `${Math.floor(track.duration / 60)}:${(track.duration % 60).toFixed(0).padStart(2, '0')}` : "LIVE"}
+                                        </span>
                                     </div>
                                 </motion.div>
                             ))}
@@ -289,26 +181,197 @@ export default function Happy() {
                     )}
                 </div>
 
-                {/* Energy Pulse Section */}
-                <div className="grid md:grid-cols-3 gap-8 pt-12">
-                    {[
-                        { icon: Music, label: "Auditory Joy", desc: "Radiant soundscapes tuned to 528Hz." },
-                        { icon: Share2, label: "Vibe Sync", desc: "Share your euphoric state with the collective." },
-                        { icon: Download, label: "Physical Anchor", desc: "Download high-alpha radiant artifacts." }
-                    ].map((feature, i) => (
+                {/* Persistent Mini Player (if modal is hidden but playing) */}
+                <AnimatePresence>
+                    {currentTrack && isPlaying && !showPlayerModal && (
                         <motion.div
-                            key={i}
-                            whileHover={{ y: -5 }}
-                            className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4 hover:bg-orange-500/[0.03] hover:border-orange-500/20 transition-all"
+                            initial={{ y: 100 }}
+                            animate={{ y: 0 }}
+                            exit={{ y: 100 }}
+                            onClick={() => setShowPlayerModal(true)}
+                            className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-lg bg-orange-950/40 backdrop-blur-3xl border border-orange-400/20 rounded-full p-4 z-40 flex items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] cursor-pointer hover:border-orange-400/40 transition-all"
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-                                <feature.icon className="w-6 h-6 text-orange-400" />
+                            <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-black">
+                                <Music className="w-5 h-5" />
                             </div>
-                            <h4 className="text-lg font-bold text-white tracking-tight">{feature.label}</h4>
-                            <p className="text-sm text-white/40 font-light leading-relaxed">{feature.desc}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[8px] uppercase tracking-widest text-orange-400 font-bold mb-1">Radiating Frequency</p>
+                                <h4 className="text-white text-sm font-bold truncate">{currentTrack.title}</h4>
+                            </div>
+                            <button className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center" onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+                                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                            </button>
                         </motion.div>
-                    ))}
-                </div>
+                    )}
+                </AnimatePresence>
+
+                {/* Spotify-Killer Playback Modal */}
+                <AnimatePresence>
+                    {showPlayerModal && currentTrack && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12 overflow-hidden">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 bg-black/95 backdrop-blur-2xl"
+                                onClick={() => setShowPlayerModal(false)}
+                            />
+
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 50 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 50 }}
+                                className="relative w-full max-w-6xl h-full max-h-[850px] bg-gradient-to-br from-orange-950/20 via-black to-black border border-white/5 rounded-[4rem] flex flex-col lg:flex-row overflow-hidden shadow-[0_0_100px_rgba(249,115,22,0.1)]"
+                            >
+                                {/* Left Section: Artwork & Visualizer */}
+                                <div className="hidden lg:flex w-[45%] h-full relative p-20 flex-col justify-between items-center border-r border-white/5">
+                                    <div className="absolute inset-0 overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-orange-500/5 blur-[120px] rounded-full animate-pulse" />
+                                    </div>
+
+                                    <div className="relative z-10 w-full aspect-square rounded-[3rem] bg-orange-400/10 border border-orange-400/30 flex items-center justify-center overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)]">
+                                        <motion.div
+                                            animate={{ scale: isPlaying ? [1, 1.05, 1] : 1 }}
+                                            transition={{ duration: 2, repeat: Infinity }}
+                                            className="w-40 h-40 rounded-full border-2 border-orange-500/20 flex items-center justify-center"
+                                        >
+                                            <Music className="w-20 h-20 text-orange-400 opacity-40" />
+                                        </motion.div>
+
+                                        {/* Dynamic Bar Visualizer Overlay */}
+                                        <div className="absolute bottom-10 left-10 right-10 flex justify-center gap-2 h-20 items-end">
+                                            {[...Array(20)].map((_, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    animate={{ height: isPlaying ? [`${Math.random() * 40 + 10}%`, `${Math.random() * 90 + 20}%`, `${Math.random() * 40 + 10}%`] : "10%" }}
+                                                    transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
+                                                    className="w-1 bg-orange-400/40 rounded-full"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="relative z-10 text-center space-y-4">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-orange-400" />
+                                            <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-[#e9c49a]">Planetary High Fidelity</span>
+                                        </div>
+                                        <p className="text-white/20 text-xs font-light tracking-wide max-w-sm">
+                                            This artifact is verified and encrypted at the source for maximal emotional resonance.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Right Section: Controls & Information */}
+                                <div className="flex-1 h-full p-12 lg:p-20 flex flex-col justify-center">
+                                    <button
+                                        onClick={() => setShowPlayerModal(false)}
+                                        className="absolute top-10 right-10 p-4 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all text-white/40 hover:text-white"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+
+                                    <div className="space-y-16">
+                                        <div className="space-y-6">
+                                            <motion.div
+                                                initial={{ y: 20, opacity: 0 }}
+                                                animate={{ y: 0, opacity: 1 }}
+                                                className="flex items-center gap-3 px-4 py-2 bg-orange-500/10 border border-orange-500/20 rounded-full w-fit"
+                                            >
+                                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                                <span className="text-[10px] uppercase tracking-widest text-orange-400 font-bold">Now Radiating</span>
+                                            </motion.div>
+
+                                            <div className="space-y-4">
+                                                <motion.h2
+                                                    initial={{ y: 20, opacity: 0 }}
+                                                    animate={{ y: 0, opacity: 1 }}
+                                                    transition={{ delay: 0.1 }}
+                                                    className="text-5xl md:text-7xl font-display font-light text-white tracking-tight"
+                                                >
+                                                    {currentTrack.title}
+                                                </motion.h2>
+                                                <motion.p
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    transition={{ delay: 0.2 }}
+                                                    className="text-white/40 text-lg md:text-xl font-light italic leading-relaxed"
+                                                >
+                                                    {currentTrack.description}
+                                                </motion.p>
+                                            </div>
+                                        </div>
+
+                                        {/* Player Controls */}
+                                        <div className="space-y-10">
+                                            {/* Progress Bar */}
+                                            <div className="space-y-4">
+                                                <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden cursor-pointer group">
+                                                    <motion.div
+                                                        className="absolute inset-y-0 left-0 bg-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.5)]"
+                                                        style={{ width: `${played * 100}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between text-[10px] font-mono tracking-widest text-white/20 font-bold">
+                                                    <span>0:00</span>
+                                                    <span>{currentTrack.duration ? `${Math.floor(currentTrack.duration / 60)}:${(currentTrack.duration % 60).toFixed(0).padStart(2, '0')}` : "LIVE"}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Buttons */}
+                                            <div className="flex items-center justify-between">
+                                                <button className="text-white/20 hover:text-white transition-colors"><Shuffle className="w-6 h-6" /></button>
+
+                                                <div className="flex items-center gap-12">
+                                                    <button className="text-white hover:text-orange-400 transition-colors"><SkipBack className="w-8 h-8 fill-current" /></button>
+                                                    <button
+                                                        onClick={togglePlay}
+                                                        className="w-24 h-24 rounded-full bg-white text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_20px_50px_rgba(255,255,255,0.15)]"
+                                                    >
+                                                        {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-2" />}
+                                                    </button>
+                                                    <button className="text-white hover:text-orange-400 transition-colors"><SkipForward className="w-8 h-8 fill-current" /></button>
+                                                </div>
+
+                                                <button className="text-white/20 hover:text-white transition-colors"><Repeat className="w-6 h-6" /></button>
+                                            </div>
+                                        </div>
+
+                                        {/* Hidden Audio Player */}
+                                        <div className="hidden">
+                                            <DynamicPlayer
+                                                url={currentTrack?.audioUrl || ""}
+                                                playing={isPlaying}
+                                                onProgress={(state: any) => setPlayed(state.played)}
+                                                onEnded={() => setIsPlaying(false)}
+                                                width="0"
+                                                height="0"
+                                                volume={0.8}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-10 pt-10 border-t border-white/5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                                    <Layers className="w-4 h-4 text-orange-400" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-white/20 uppercase font-bold tracking-widest leading-none">Vibe State</span>
+                                                    <span className="text-xs text-white/60">Alpha Synchronization</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1" />
+                                            <Button variant="outline" className="rounded-full border-white/10 text-white/40 hover:text-white gap-2">
+                                                <Maximize2 className="w-4 h-4" /> Fullscreen Mode
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
             </div>
         </DashboardLayout>
     );
