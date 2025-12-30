@@ -97,6 +97,30 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+    const [pendingPayment, setPendingPayment] = useState<any>(null);
+
+    // Listen for pending resonance payments
+    useEffect(() => {
+        if (!localUser?.id) return;
+
+        const q = query(
+            collection(db, "payments"),
+            where("userId", "==", localUser.id),
+            where("status", "==", "pending"),
+            limit(1)
+        );
+
+        const unsub = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const data = snapshot.docs[0].data();
+                setPendingPayment({ id: snapshot.docs[0].id, ...data });
+            } else {
+                setPendingPayment(null);
+            }
+        });
+
+        return () => unsub();
+    }, [localUser?.id]);
 
     // Sync local user with prop
     useEffect(() => {
@@ -1059,6 +1083,66 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
 
                     {/* Subtle Background Accent */}
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#8b6544]/5 blur-[150px] -z-10 pointer-events-none rounded-full" />
+
+                    {/* Pending Payment Verification Card */}
+                    <AnimatePresence>
+                        {pendingPayment && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                                className="fixed bottom-24 md:bottom-12 right-6 md:right-12 z-[100] w-[350px] bg-[#0A0A0A]/90 backdrop-blur-3xl border border-[#e9c49a]/20 rounded-[2.5rem] p-6 shadow-[0_32px_64px_rgba(0,0,0,0.8)] overflow-hidden group"
+                            >
+                                {/* Progress Bar Background */}
+                                <div className="absolute top-0 left-0 w-full h-[3px] bg-white/5">
+                                    <motion.div
+                                        initial={{ width: "100%" }}
+                                        animate={{ width: "0%" }}
+                                        transition={{ duration: 300, ease: "linear" }}
+                                        className="h-full bg-[#e9c49a] shadow-[0_0_10px_#e9c49a]"
+                                    />
+                                </div>
+
+                                <div className="flex items-start gap-5">
+                                    <div className="w-14 h-14 rounded-2xl bg-[#e9c49a]/10 border border-[#e9c49a]/20 flex items-center justify-center relative flex-shrink-0">
+                                        <Activity className="w-6 h-6 text-[#e9c49a] animate-pulse" />
+                                        <div className="absolute inset-x-0 bottom-1 flex justify-center">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#e9c49a] animate-ping" />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] uppercase tracking-[0.3em] font-bold text-[#e9c49a]/60">Verification Terminal</p>
+                                            <PaymentTimer
+                                                createdAt={pendingPayment.createdAt}
+                                                onComplete={() => setPendingPayment(null)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h4 className="text-sm font-display font-light text-white leading-tight">
+                                                Resonance <span className="text-[#e9c49a] italic">Synchronizing</span>
+                                            </h4>
+                                            <p className="text-[10px] text-white/30 font-light leading-relaxed">
+                                                The core is verifying your transmission. Protocol {pendingPayment.plan.toUpperCase()} will unlock automatically.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-5 flex items-center gap-3">
+                                    <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
+                                        <motion.div
+                                            className="h-full bg-[#e9c49a]/30"
+                                            animate={{ x: ["-100%", "100%"] }}
+                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                        />
+                                    </div>
+                                    <span className="text-[8px] font-mono text-white/20">PAY_ID: {pendingPayment.id.slice(-6)}</span>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </main>
             </div>
 
@@ -1088,3 +1172,35 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
         </div>
     );
 }
+
+function PaymentTimer({ createdAt, onComplete }: { createdAt: any, onComplete: () => void }) {
+    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
+
+    useEffect(() => {
+        if (!createdAt) return;
+
+        const targetDate = createdAt.seconds ? createdAt.seconds * 1000 : Date.now();
+        const deadline = targetDate + (5 * 60 * 1000);
+
+        const tick = () => {
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((deadline - now) / 1000));
+            setTimeLeft(diff);
+            if (diff === 0) onComplete();
+        };
+
+        const interval = setInterval(tick, 1000);
+        tick();
+        return () => clearInterval(interval);
+    }, [createdAt]);
+
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
+    return (
+        <span className="text-xs font-mono font-bold text-[#e9c49a]">
+            {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+        </span>
+    );
+}
+
+export default DashboardLayout;
