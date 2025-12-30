@@ -17,13 +17,8 @@ export default function CreateShort() {
     const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.type.startsWith("video/")) {
-                setVideoFile(file);
-            } else {
-                toast.error("Invalid File", {
-                    description: "Please select a valid video file."
-                });
-            }
+            // Allow any video format as requested
+            setVideoFile(file);
         }
     };
 
@@ -201,7 +196,7 @@ export default function CreateShort() {
                                                 <p className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">
                                                     Click to upload video
                                                 </p>
-                                                <p className="text-xs text-white/30 mt-1">MP4, MOV, AVI (Max 500MB)</p>
+                                                <p className="text-xs text-white/30 mt-1">Any Video Format (Unlimited Size)</p>
                                             </div>
                                         </>
                                     )}

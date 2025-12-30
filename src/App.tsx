@@ -21,6 +21,7 @@ import Payment from "./pages/Payment";
 import UserProfile from "./pages/UserProfile";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
+import Transactions from "./pages/Transactions";
 import CreateShort from "./pages/admin/CreateShort";
 import MoodsUpload from "./pages/admin/MoodsUpload";
 import HappyUpload from "./pages/admin/HappyUpload";
@@ -37,6 +38,7 @@ import WorkerLogin from "./pages/workers/WorkerLogin";
 import WorkerSignup from "./pages/workers/WorkerSignup";
 import RoleSelection from "./pages/workers/RoleSelection";
 import WorkerDashboard from "./pages/workers/WorkerDashboard";
+import PaymentVerification from "./pages/workers/PaymentVerification";
 import WorkersControlCenter from "./pages/admin/workers/WorkersControlCenter";
 import WorkerProfile from "./pages/admin/workers/WorkerProfile";
 
@@ -67,6 +69,7 @@ const App = () => (
           <Route path="/watch" element={<Watch />} />
           <Route path="/upgrade" element={<Upgrade />} />
           <Route path="/payment" element={<Payment />} />
+          <Route path="/transactions" element={<Transactions />} />
           <Route path="/user-profile/:userId" element={<UserProfile />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/messages" element={<Messages />} />
@@ -87,6 +90,7 @@ const App = () => (
           <Route path="/workers/signup" element={<WorkerSignup />} />
           <Route path="/workers/select-role" element={<RoleSelection />} />
           <Route path="/workers/dashboard" element={<WorkerDashboard />} />
+          <Route path="/workers/payment-verification" element={<PaymentVerification />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

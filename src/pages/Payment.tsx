@@ -54,7 +54,21 @@ export default function Payment() {
 
     const handlePayment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!userData || !auth.currentUser) return;
+        console.log("🚀 Form submitted!");
+        console.log("User data:", userData);
+        console.log("Auth user:", auth.currentUser);
+        console.log("Payment method:", paymentMethod);
+        console.log("MoMo number:", momoNumber);
+        console.log("Sender name:", senderName);
+        console.log("Screenshot:", screenshot);
+
+        if (!userData || !auth.currentUser) {
+            console.error("❌ No user data or auth user!");
+            toast.error("Authentication Error", {
+                description: "Please log in to continue."
+            });
+            return;
+        }
 
         setProcessing(true);
         try {
@@ -62,6 +76,7 @@ export default function Payment() {
 
             // 1. Upload Screenshot if using MoMo
             if (paymentMethod === 'momo' && screenshot) {
+                console.log("📤 Uploading screenshot to Cloudinary...");
                 const cloudName = 'dwm2smxdk';
                 const apiKey = '229614895851864';
                 const apiSecret = '7F_je2wrqmJO6nasNJZqb0uwmhU';
@@ -95,13 +110,16 @@ export default function Payment() {
                 if (response.ok) {
                     const result = await response.json();
                     screenshotUrl = result.secure_url;
+                    console.log("✅ Screenshot uploaded:", screenshotUrl);
                 } else {
                     const errorData = await response.json();
+                    console.error("❌ Cloudinary error:", errorData);
                     throw new Error(errorData.error?.message || "Screenshot upload failed");
                 }
             }
 
             // 2. Log payment request in Firestore for admin verification
+            console.log("💾 Saving payment to Firestore...");
             const paymentId = `PAY-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
             await setDoc(doc(db, "payments", paymentId), {
                 id: paymentId,
@@ -118,13 +136,14 @@ export default function Payment() {
                 createdAt: serverTimestamp()
             });
 
+            console.log("✅ Payment saved successfully!");
             toast.success("Synchronization Request Submitted", {
                 description: "Our core systems are verifying your resonance. Ascension will complete shortly."
             });
 
             navigate("/dashboard");
         } catch (error: any) {
-            console.error("Payment Error:", error);
+            console.error("❌ Payment Error:", error);
             toast.error("Synchronization Failed", {
                 description: error.message || "The planetary link was interrupted. Please retry the ascension."
             });
@@ -242,7 +261,18 @@ export default function Payment() {
                             </div>
 
                             <button
+                                type="submit"
                                 disabled={processing}
+                                onClick={(e) => {
+                                    console.log("🖱️ Button clicked!");
+                                    console.log("Processing state:", processing);
+                                    console.log("Form validity:", e.currentTarget.form?.checkValidity());
+
+                                    // Check if all required fields are filled
+                                    if (!momoNumber) console.warn("⚠️ MoMo number is empty");
+                                    if (!senderName) console.warn("⚠️ Sender name is empty");
+                                    if (!screenshot) console.warn("⚠️ Screenshot is missing");
+                                }}
                                 className="w-full py-6 rounded-3xl bg-[#e9c49a] text-black font-bold text-[11px] uppercase tracking-[0.4em] hover:bg-white transition-all shadow-[0_20px_40px_rgba(233,196,154,0.2)] disabled:opacity-50 flex items-center justify-center gap-3 group"
                             >
                                 {processing ? (

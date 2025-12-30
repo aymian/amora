@@ -101,7 +101,7 @@ const WorkerDashboard = () => {
         if (['payment_verifier', 'payment_approver', 'payment_rejector'].includes(activeRole)) {
             return [
                 ...base,
-                { icon: Clock, label: 'Payment Queue', alert: true },
+                { icon: Clock, label: 'Payment Queue', alert: true, path: '/workers/payment-verification' },
                 { icon: CheckCircle2, label: 'Verified Requests' },
                 { icon: FileText, label: 'Activity Log' }
             ];
@@ -158,6 +158,7 @@ const WorkerDashboard = () => {
                     {menuItems.map((item: any, idx) => (
                         <button
                             key={idx}
+                            onClick={() => item.path && navigate(item.path)}
                             className={cn(
                                 "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative",
                                 item.active

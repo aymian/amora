@@ -47,6 +47,7 @@ import {
     Bot,
     Sun,
     CloudRain,
+    Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -372,6 +373,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         items: [
                             { icon: Sparkles, label: "Unlock Full Access", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Receipt, label: "Transactions", path: "/transactions" },
                             { icon: HelpCircle, label: "Help & Terms", path: "/help" },
                         ]
                     }
@@ -410,6 +412,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         items: [
                             { icon: ShieldAlert, label: "Pro Access ✅", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Receipt, label: "Transactions", path: "/transactions" },
                             { icon: User, label: "Support", path: "/support" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
@@ -451,6 +454,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         items: [
                             { icon: Crown, label: "Elite Badge 👑", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Receipt, label: "Transactions", path: "/transactions" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }
@@ -486,6 +490,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         items: [
                             { icon: Star, label: "Verified Creator ⭐", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
+                            { icon: Receipt, label: "Transactions", path: "/transactions" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }
@@ -819,11 +824,15 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         <DropdownMenuContent className="w-56 bg-[#080808] border-[#e9c49a]/10 text-white p-2 rounded-2xl" align="end" sideOffset={10}>
                             <DropdownMenuLabel className="font-light text-white/40 text-[10px] uppercase tracking-[0.2em] px-3 py-2">Account Control</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                            <DropdownMenuItem onClick={() => navigate("/profile")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
                                 <Users className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
                                 <span className="text-sm font-light">Public Profile</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                            <DropdownMenuItem onClick={() => navigate("/dashboard")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                                <Home className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
+                                <span className="text-sm font-light">Dashboard</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
                                 <Settings className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
                                 <span className="text-sm font-light">Billing & Plan</span>
                             </DropdownMenuItem>
