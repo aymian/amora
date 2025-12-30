@@ -214,7 +214,7 @@ const AdminNexus = () => {
             <main className="flex-1 overflow-y-auto custom-scrollbar relative">
                 {/* Background Ambient Lights */}
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-purple-900/[0.03] blur-[150px] -z-10 rounded-full" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-900/[0.02] blur-[100px] -z-10 rounded-full" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#e9c49a]/[0.02] blur-[100px] -z-10 rounded-full" />
 
                 {/* Top Intelligence Bar */}
                 <header className="h-20 bg-black/20 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-20">
@@ -299,7 +299,7 @@ const AdminNexus = () => {
                                         </div>
                                         <div className="space-y-4">
                                             {[
-                                                { label: 'CPU Usage', val: '24%', color: 'bg-blue-500' },
+                                                { label: 'CPU Usage', val: '24%', color: 'bg-[#e9c49a]' },
                                                 { label: 'Memory', val: '42%', color: 'bg-purple-500' },
                                                 { label: 'Network', val: '12ms', color: 'bg-emerald-500' },
                                             ].map((stat) => (
@@ -512,7 +512,7 @@ const AdminNexus = () => {
                                                         <span className={cn(
                                                             "px-2 py-0.5 rounded-full text-[7px] uppercase font-bold tracking-widest",
                                                             citizen.plan === 'elite' ? "bg-[#e9c49a]/10 text-[#e9c49a]" :
-                                                                citizen.plan === 'pro' ? "bg-blue-500/10 text-blue-400" :
+                                                                citizen.plan === 'pro' ? "bg-[#e9c49a]/10 text-[#e9c49a]" :
                                                                     citizen.plan === 'creator' ? "bg-purple-500/10 text-purple-400" : "bg-white/5 text-white/40"
                                                         )}>
                                                             {citizen.plan || 'Free Member'}
@@ -551,7 +551,7 @@ const AdminNexus = () => {
                                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                                             animate={{ opacity: 1, scale: 1, y: 0 }}
                                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                                            className="w-full max-w-2xl bg-[#0D121F] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl relative"
+                                            className="w-full max-w-2xl bg-[#050505] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl relative"
                                         >
                                             <button
                                                 onClick={() => setSelectedCitizen(null)}

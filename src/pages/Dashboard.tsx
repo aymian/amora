@@ -116,7 +116,7 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center">
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
                     <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Synchronizing Immersion...</p>

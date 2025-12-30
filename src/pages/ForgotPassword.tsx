@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mail, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,20 @@ import emailjs from "@emailjs/browser";
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
     const [step, setStep] = useState(1); // 1: Send Email, 2: Success Message
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                navigate("/dashboard");
+            } else {
+                setAuthLoading(false);
+            }
+        });
+        return () => unsubscribe();
+    }, [navigate]);
 
     const handleSendOTP = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -32,7 +45,6 @@ export default function ForgotPassword() {
             });
 
             // 3. EmailJS TRANSMISSION (100% Free Mode)
-            // Replace these with your IDs from emailjs.com
             const SERVICE_ID = "service_kb74jmv";
             const TEMPLATE_ID = "template_1hwn5za";
             const PUBLIC_KEY = "JN2NHWNzO5skAzoTv";
@@ -46,7 +58,6 @@ export default function ForgotPassword() {
 
                 toast.success("Identity Resonance dispatched to your inbox.");
             } else {
-                // Dev Log/Fallback if IDs aren't set yet
                 console.log("EmailJS IDs not configured. Bypass code:", otpCode);
                 toast.success("Dev Mode: Check Console for code", {
                     description: `OTP: ${otpCode}`,
@@ -64,6 +75,14 @@ export default function ForgotPassword() {
             setLoading(false);
         }
     };
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center p-8 font-sans overflow-hidden">

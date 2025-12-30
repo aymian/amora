@@ -503,7 +503,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     };
 
     return (
-        <div className="min-h-screen bg-[#0B0F1A] text-white flex flex-col font-sans">
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans">
 
             {/* Search Overlay - Arbiter Global Indexing Engine */}
             <AnimatePresence>
@@ -522,7 +522,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             initial={{ scale: 0.95, opacity: 0, y: -20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: -20 }}
-                            className="w-full max-w-2xl bg-[#0D121F]/90 border border-white/10 rounded-[40px] overflow-hidden shadow-[0_64px_128px_rgba(0,0,0,0.8)] relative"
+                            className="w-full max-w-2xl bg-[#080808]/90 border border-[#e9c49a]/10 rounded-[40px] overflow-hidden shadow-[0_64px_128px_rgba(0,0,0,0.8)] relative"
                         >
                             <div className="p-8 border-b border-white/5 flex items-center gap-5">
                                 <Search className="w-7 h-7 text-[#e9c49a] animate-pulse" />
@@ -649,9 +649,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
             {/* Top Navbar */}
             <header className="fixed top-0 left-0 right-0 h-16 z-50 glass border-b border-white/5 px-6 flex items-center justify-between">
                 <div className="flex items-center gap-8">
-                    <div className="cursor-pointer transition-transform hover:scale-105 active:scale-95" onClick={() => navigate("/")}>
-                        <Logo className="h-6 w-auto" />
-                    </div>
+                    <Logo className="h-6 w-auto" />
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -723,7 +721,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                     )}
                                 </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-80 bg-[#0D121F]/90 backdrop-blur-3xl border-white/5 p-4 rounded-[2rem] shadow-2xl space-y-4">
+                            <DropdownMenuContent align="end" className="w-80 bg-[#080808]/90 backdrop-blur-3xl border-[#e9c49a]/10 p-4 rounded-[2rem] shadow-2xl space-y-4">
                                 <div className="flex items-center justify-between px-2 mb-2">
                                     <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20">Identity Alerts</span>
                                     <span className="text-[10px] uppercase font-bold text-[#e9c49a]">{notifications.length} Nodes</span>
@@ -818,7 +816,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                 <ChevronDown className="w-3 h-3 text-white/20 group-hover:text-white transition-colors mr-2" />
                             </div>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56 bg-[#0D121F] border-white/10 text-white p-2 rounded-2xl" align="end" sideOffset={10}>
+                        <DropdownMenuContent className="w-56 bg-[#080808] border-[#e9c49a]/10 text-white p-2 rounded-2xl" align="end" sideOffset={10}>
                             <DropdownMenuLabel className="font-light text-white/40 text-[10px] uppercase tracking-[0.2em] px-3 py-2">Account Control</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
@@ -863,7 +861,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                 {/* Fixed Sidebar */}
                 {!hideSidebar && (
                     <aside className={cn(
-                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#0D121F] to-[#0B0F1A] border-r border-white/5 pt-8",
+                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#080808] to-[#050505] border-r border-[#e9c49a]/5 pt-8",
                         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
                     )}>
                         <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
@@ -952,7 +950,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
 
                 {/* Main Content Area */}
                 <main className={cn(
-                    "flex-1 overflow-y-auto bg-[#0B0F1A] custom-scrollbar relative",
+                    "flex-1 overflow-y-auto bg-[#050505] custom-scrollbar relative",
                     !hideSidebar && "md:ml-[240px]"
                 )}>
                     <div className={cn(
@@ -968,7 +966,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-[#0B0F1A]/80 backdrop-blur-2xl rounded-[3rem] overflow-hidden"
+                                    className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-[#050505]/80 backdrop-blur-2xl rounded-[3rem] overflow-hidden"
                                 >
                                     <motion.div
                                         initial={{ scale: 0.9, y: 20, opacity: 0 }}
@@ -1019,7 +1017,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
 
             <style>{`
         .glass {
-          background: rgba(13, 18, 31, 0.7);
+          background: rgba(8, 8, 8, 0.7);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
         }

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Lock, ArrowRight, Sparkles, KeyRound, RefreshCcw } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
     collection,
     query,
@@ -25,15 +26,27 @@ export default function ResetPassword() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
     const [isOtpVerified, setIsOtpVerified] = useState(false);
 
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
-        if (!email) {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                navigate("/dashboard");
+            } else {
+                setAuthLoading(false);
+            }
+        });
+        return () => unsubscribe();
+    }, [navigate]);
+
+    useEffect(() => {
+        if (!authLoading && !email) {
             navigate("/forgot-password");
         }
-    }, [email, navigate]);
+    }, [email, navigate, authLoading]);
 
     const handleOtpChange = (index: number, value: string) => {
         if (value.length > 1) value = value.slice(-1);
@@ -111,14 +124,6 @@ export default function ResetPassword() {
 
         setLoading(true);
         try {
-            // NOTE: Changing password via client SDK for a different user 
-            // usually requires an Admin SDK or a specific Firebase Reset Link.
-            // Since we are doing a CUSTOM OTP flow, we would typically call a 
-            // Cloud Function here to update the user's password securely.
-
-            // For this UI implementation, we'll mark the OTP as used and simulate success.
-            // In a real implementation, you'd call an API endpoint here.
-
             const q = query(
                 collection(db, "password_resets"),
                 where("email", "==", email),
@@ -142,6 +147,14 @@ export default function ResetPassword() {
             setLoading(false);
         }
     };
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center p-8 font-sans overflow-hidden">

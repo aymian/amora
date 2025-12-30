@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -16,7 +17,7 @@ export function Logo({ className, size = "md", showTagline = false }: LogoProps)
     const currentSize = sizes[size as keyof typeof sizes] || sizes.md;
 
     return (
-        <div className={cn("flex items-center gap-3 group cursor-pointer", className)}>
+        <Link to="/dashboard" className={cn("flex items-center gap-3 group cursor-pointer", className)}>
             <div className={cn(
                 "relative rounded-xl overflow-hidden flex items-center justify-center transition-all duration-500",
                 currentSize.icon
@@ -67,6 +68,6 @@ export function Logo({ className, size = "md", showTagline = false }: LogoProps)
                 )}
                 <div className="h-[1px] w-0 bg-gradient-to-r from-[#e9c49a]/60 via-[#e9c49a]/20 to-transparent group-hover:w-full transition-all duration-1000 ease-out" />
             </div>
-        </div>
+        </Link>
     );
 }

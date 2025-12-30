@@ -30,9 +30,7 @@ export function Navbar() {
           }}
         >
           {/* Logo */}
-          <a href="/" className="group flex-shrink-0">
-            <Logo size="sm" />
-          </a>
+          <Logo size="sm" className="flex-shrink-0" />
 
           {/* Navigation - Desktop */}
           <div className="hidden lg:flex items-center gap-10">

@@ -237,7 +237,7 @@ export default function Contents() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     {[
                         { label: "Total Artifacts", value: artifacts.length, icon: Database, color: "text-[#e9c49a]" },
-                        { label: "Visual Registry", value: artifacts.filter(a => a.type === 'image').length, icon: ImageIcon, color: "text-blue-400" },
+                        { label: "Visual Registry", value: artifacts.filter(a => a.type === 'image').length, icon: ImageIcon, color: "text-[#e9c49a]" },
                         { label: "Cinematic Core", value: artifacts.filter(a => a.type === 'video').length, icon: Video, color: "text-purple-400" }
                     ].map((metric, i) => (
                         <div key={i} className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-between group hover:bg-white/[0.04] transition-all">
@@ -275,7 +275,7 @@ export default function Contents() {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
-                                        className="absolute top-20 left-0 right-0 z-50 p-4 rounded-3xl bg-[#0D121F] border border-white/10 shadow-2xl backdrop-blur-3xl"
+                                        className="absolute top-20 left-0 right-0 z-50 p-4 rounded-3xl bg-[#050505] border border-white/10 shadow-2xl backdrop-blur-3xl"
                                     >
                                         <p className="px-4 py-2 text-[9px] uppercase tracking-widest text-[#e9c49a]/40 font-bold">Resonance Matches</p>
                                         <div className="space-y-1 pt-2">
