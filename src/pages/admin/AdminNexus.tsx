@@ -33,6 +33,7 @@ const AdminNexus = () => {
     const [payments, setPayments] = useState<any[]>([]);
     const [fetchingPayments, setFetchingPayments] = useState(false);
     const [selectedCitizen, setSelectedCitizen] = useState<any>(null);
+    const [isEditingMode, setIsEditingMode] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -130,6 +131,41 @@ const AdminNexus = () => {
     const handleLogout = () => {
         localStorage.removeItem('amora_admin_token');
         navigate('/manager');
+    };
+
+    const handleDeleteUser = async (userId: string) => {
+        if (!window.confirm("Are you sure you want to permanently banish this citizen? This action cannot be undone.")) return;
+
+        try {
+            const { doc, deleteDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            await deleteDoc(doc(db, "users", userId));
+
+            setCitizens(prev => prev.filter(c => c.id !== userId));
+            setSelectedCitizen(null);
+        } catch (error) {
+            console.error("Error removing citizen:", error);
+            alert("Failed to remove citizen.");
+        }
+    };
+
+    const handleUpdatePlan = async (userId: string, newPlan: string) => {
+        try {
+            const { doc, updateDoc } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+
+            await updateDoc(doc(db, "users", userId), {
+                plan: newPlan
+            });
+
+            setCitizens(prev => prev.map(c => c.id === userId ? { ...c, plan: newPlan } : c));
+            setSelectedCitizen((prev: any) => ({ ...prev, plan: newPlan }));
+            setIsEditingMode(false);
+        } catch (error) {
+            console.error("Error updating plan:", error);
+            alert("Failed to update protocol.");
+        }
     };
 
     const menuItems = [
@@ -610,14 +646,48 @@ const AdminNexus = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex gap-4 pt-4">
-                                                    <button className="flex-1 py-4 rounded-2xl bg-[#e9c49a] text-black font-bold text-[10px] uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95">
-                                                        Modify Protocol
-                                                    </button>
-                                                    <button className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all">
-                                                        Restrict Access
-                                                    </button>
-                                                </div>
+                                                {isEditingMode ? (
+                                                    <div className="space-y-4 pt-4">
+                                                        <p className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Select New Protocol</p>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            {['free', 'pro', 'elite', 'creator'].map(plan => (
+                                                                <button
+                                                                    key={plan}
+                                                                    onClick={() => handleUpdatePlan(selectedCitizen.id, plan)}
+                                                                    className={cn(
+                                                                        "p-4 rounded-xl border transition-all text-[10px] uppercase font-bold tracking-widest",
+                                                                        (selectedCitizen.plan || 'free') === plan
+                                                                            ? "bg-[#e9c49a] text-black border-[#e9c49a]"
+                                                                            : "bg-white/5 border-white/10 text-white/60 hover:border-white/20 hover:text-white"
+                                                                    )}
+                                                                >
+                                                                    {plan}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setIsEditingMode(false)}
+                                                            className="w-full py-3 text-[10px] text-white/40 hover:text-white uppercase tracking-widest transition-colors"
+                                                        >
+                                                            Cancel Modification
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-4 pt-4">
+                                                        <button
+                                                            onClick={() => setIsEditingMode(true)}
+                                                            className="flex-1 py-4 rounded-2xl bg-[#e9c49a] text-black font-bold text-[10px] uppercase tracking-widest hover:bg-white transition-all shadow-xl active:scale-95"
+                                                        >
+                                                            Modify Protocol
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteUser(selectedCitizen.id)}
+                                                            className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/40 font-bold text-[10px] uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all"
+                                                        >
+                                                            Restrict Access
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </motion.div>
                                     </div>

@@ -276,112 +276,127 @@ export default function Happy() {
                                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
                                     {/* Main Stage (Player) */}
                                     <div className={cn(
-                                        "flex-1 relative bg-black flex items-center justify-center transition-all duration-1000 ease-in-out overflow-hidden uppercase",
+                                        "flex-1 flex flex-col transition-all duration-1000 ease-in-out uppercase overflow-y-auto custom-scrollbar",
                                         isSidebarCollapsed ? "w-full" : "lg:w-[72%]"
                                     )}>
-                                        <div className="absolute inset-0 opacity-20 blur-[100px] pointer-events-none overflow-hidden scale-150">
-                                            <video src={currentClip.videoUrl} autoPlay muted playsInline loop className="w-full h-full object-cover" />
-                                        </div>
-
-                                        <video
-                                            ref={videoRef}
-                                            src={currentClip.videoUrl}
-                                            autoPlay
-                                            muted={muted}
-                                            playsInline
-                                            className="relative z-10 h-full w-auto max-w-full object-contain"
-                                            onTimeUpdate={handleTimeUpdate}
-                                            onDurationChange={() => setDuration(videoRef.current?.duration || 0)}
-                                            onEnded={handleNext}
-                                            onClick={handleTogglePlay}
-                                        />
-
-                                        {/* Premium Interaction Overlay */}
-                                        <div className={cn(
-                                            "absolute inset-0 z-20 flex flex-col justify-between transition-opacity duration-700",
-                                            (showControls || !playing) ? "opacity-100" : "opacity-0"
-                                        )}>
-                                            <div className="bg-gradient-to-b from-black/60 to-transparent p-8 flex justify-between items-start">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-[9px] uppercase tracking-[0.4em] font-black text-[#e9c49a]/40">Neural Stream</span>
-                                                    <h3 className="text-white/60 text-[10px] font-bold uppercase tracking-widest">{currentClip.title}</h3>
-                                                </div>
-                                                <button
-                                                    onClick={() => setShowPlayerModal(false)}
-                                                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white transition-all backdrop-blur-3xl group"
-                                                >
-                                                    <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
-                                                </button>
+                                        <div className="relative flex-1 min-h-[50vh] bg-black flex items-center justify-center overflow-hidden border-b border-white/5">
+                                            <div className="absolute inset-0 opacity-20 blur-[100px] pointer-events-none overflow-hidden scale-150">
+                                                <video src={currentClip.videoUrl} autoPlay muted playsInline loop className="w-full h-full object-cover" />
                                             </div>
 
-                                            <div className="bg-gradient-to-t from-black/90 via-black/40 to-transparent p-12 lg:p-20 space-y-10 group/ui">
-                                                <div className="space-y-4 max-w-5xl translate-y-4 group-hover/ui:translate-y-0 transition-transform duration-700">
-                                                    <div className="flex items-center gap-4">
-                                                        <motion.div
-                                                            animate={{ scale: [1, 1.1, 1] }}
-                                                            transition={{ duration: 2, repeat: Infinity }}
-                                                            className="px-4 py-1.5 bg-[#e9c49a] text-black rounded-full text-[9px] font-black uppercase tracking-[0.2em]"
-                                                        >
-                                                            Resonance Active
-                                                        </motion.div>
-                                                        <div className="h-px w-12 bg-[#e9c49a]/30" />
-                                                        <span className="text-[10px] text-white/30 uppercase font-black tracking-[0.3em]">Cinematic High Frequency</span>
-                                                    </div>
-                                                    <h2 className="text-5xl lg:text-7xl font-display font-light text-white tracking-tight leading-none uppercase lg:ml-[-4px]">
-                                                        {currentClip.title.split(' ').map((word: string, i: number) => (
-                                                            <span key={i} className={cn(i % 2 !== 0 && "text-[#e9c49a] italic font-serif")}>{word} </span>
-                                                        ))}
-                                                    </h2>
+                                            <video
+                                                ref={videoRef}
+                                                src={currentClip.videoUrl}
+                                                autoPlay
+                                                muted={muted}
+                                                playsInline
+                                                className="relative z-10 h-full w-auto max-w-full object-contain"
+                                                onTimeUpdate={handleTimeUpdate}
+                                                onDurationChange={() => setDuration(videoRef.current?.duration || 0)}
+                                                onEnded={handleNext}
+                                                onClick={handleTogglePlay}
+                                            />
+
+                                            {/* Premium Interaction Overlay (Controls Only) */}
+                                            <div className={cn(
+                                                "absolute inset-0 z-20 flex flex-col justify-between transition-opacity duration-700",
+                                                (showControls || !playing) ? "opacity-100" : "opacity-0"
+                                            )}>
+                                                <div className="bg-gradient-to-b from-black/60 to-transparent p-8 flex justify-end items-start">
+                                                    <button
+                                                        onClick={() => setShowPlayerModal(false)}
+                                                        className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white transition-all backdrop-blur-3xl group"
+                                                    >
+                                                        <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
+                                                    </button>
                                                 </div>
 
-                                                <div className="space-y-6">
-                                                    <div className="relative h-1.5 bg-white/5 rounded-full cursor-pointer group/progress overflow-hidden" onClick={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        const x = e.clientX - rect.left;
-                                                        const val = x / rect.width;
-                                                        if (videoRef.current) videoRef.current.currentTime = val * videoRef.current.duration;
-                                                    }}>
-                                                        <motion.div
-                                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#f5d9b8] rounded-full shadow-[0_0_20px_rgba(233,196,154,0.3)]"
-                                                            style={{ width: `${played * 100}%` }}
-                                                        />
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-10">
-                                                            <button onClick={handlePrev} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipBack className="w-5 h-5 fill-current" /></button>
-                                                            <button onClick={handleTogglePlay} className="w-20 h-20 rounded-[2rem] bg-white text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl">
-                                                                {playing ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
-                                                            </button>
-                                                            <button onClick={handleNext} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipForward className="w-5 h-5 fill-current" /></button>
-
-                                                            <div className="h-10 w-px bg-white/10 mx-2" />
-
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Duration Scan</span>
-                                                                <div className="text-[12px] font-bold text-[#e9c49a] tracking-[0.2em] font-mono">
-                                                                    {formatTime(played * duration)} <span className="text-white/20 mx-1">/</span> {formatTime(duration)}
-                                                                </div>
-                                                            </div>
+                                                <div className="bg-gradient-to-t from-black/90 via-black/40 to-transparent p-12 space-y-10 group/ui">
+                                                    <div className="space-y-6">
+                                                        <div className="relative h-1.5 bg-white/5 rounded-full cursor-pointer group/progress overflow-hidden" onClick={(e) => {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            const x = e.clientX - rect.left;
+                                                            const val = x / rect.width;
+                                                            if (videoRef.current) videoRef.current.currentTime = val * videoRef.current.duration;
+                                                        }}>
+                                                            <motion.div
+                                                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#f5d9b8] rounded-full shadow-[0_0_20px_rgba(233,196,154,0.3)]"
+                                                                style={{ width: `${played * 100}%` }}
+                                                            />
                                                         </div>
 
-                                                        <div className="flex items-center gap-8">
-                                                            <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-2xl border border-white/5">
-                                                                <button onClick={() => setMuted(!muted)} className="text-white/40 hover:text-white transition-all">
-                                                                    {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-10">
+                                                                <button onClick={handlePrev} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipBack className="w-5 h-5 fill-current" /></button>
+                                                                <button onClick={handleTogglePlay} className="w-20 h-20 rounded-[2rem] bg-white text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl">
+                                                                    {playing ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
                                                                 </button>
-                                                                <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
-                                                                    <div className="h-full bg-white/40" style={{ width: muted ? '0%' : '80%' }} />
+                                                                <button onClick={handleNext} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipForward className="w-5 h-5 fill-current" /></button>
+
+                                                                <div className="h-10 w-px bg-white/10 mx-2" />
+
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Duration Scan</span>
+                                                                    <div className="text-[12px] font-bold text-[#e9c49a] tracking-[0.2em] font-mono">
+                                                                        {formatTime(played * duration)} <span className="text-white/20 mx-1">/</span> {formatTime(duration)}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <button
-                                                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                                                                className={cn("p-4 rounded-2xl transition-all", !isSidebarCollapsed ? "bg-[#e9c49a] text-black" : "bg-white/5 text-white/40 hover:text-white")}
-                                                            >
-                                                                <LayoutGrid className="w-5 h-5" />
-                                                            </button>
+
+                                                            <div className="flex items-center gap-8">
+                                                                <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-2xl border border-white/5">
+                                                                    <button onClick={() => setMuted(!muted)} className="text-white/40 hover:text-white transition-all">
+                                                                        {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                                                                    </button>
+                                                                    <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                                        <div className="h-full bg-white/40" style={{ width: muted ? '0%' : '80%' }} />
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                                                    className={cn("p-4 rounded-2xl transition-all", !isSidebarCollapsed ? "bg-[#e9c49a] text-black" : "bg-white/5 text-white/40 hover:text-white")}
+                                                                >
+                                                                    <LayoutGrid className="w-5 h-5" />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Meta Info Section (Below Player) */}
+                                        <div className="p-12 space-y-8 bg-[#050505]">
+                                            <div className="space-y-4 max-w-5xl">
+                                                <div className="flex items-center gap-4">
+                                                    <motion.div
+                                                        animate={{ scale: [1, 1.1, 1] }}
+                                                        transition={{ duration: 2, repeat: Infinity }}
+                                                        className="px-4 py-1.5 bg-[#e9c49a] text-black rounded-full text-[9px] font-black uppercase tracking-[0.2em]"
+                                                    >
+                                                        Resonance Active
+                                                    </motion.div>
+                                                    <div className="h-px w-12 bg-[#e9c49a]/30" />
+                                                    <span className="text-[10px] text-white/30 uppercase font-black tracking-[0.3em]">Cinematic High Frequency</span>
+                                                </div>
+                                                <h2 className="text-4xl lg:text-5xl font-display font-light text-white tracking-tight leading-none uppercase lg:ml-[-4px] break-words">
+                                                    {currentClip.title.split(' ').map((word: string, i: number) => (
+                                                        <span key={i} className={cn(i % 2 !== 0 && "text-[#e9c49a] italic font-serif")}>{word} </span>
+                                                    ))}
+                                                </h2>
+                                                <div className="pt-4 flex items-center gap-6 border-t border-white/5">
+                                                    <button className="flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all border border-white/5">
+                                                        <ThumbsUp className="w-4 h-4" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider">Like</span>
+                                                    </button>
+                                                    <button className="flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all border border-white/5">
+                                                        <Share className="w-4 h-4" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider">Share</span>
+                                                    </button>
+                                                    <button className="flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all border border-white/5">
+                                                        <Download className="w-4 h-4" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider">Save</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

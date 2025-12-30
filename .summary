@@ -1,0 +1,55 @@
+# Amora Admin Nexus - System Documentation
+
+## Overview
+The **Admin Nexus** is the centralized command center for the Amora platform. It provides a "cinematic" interface for managing users, content, payments, and system health. The interface is designed with a high-fidelity, dark-mode aesthetic (Obsidian/Gold) to match the premium nature of the application.
+
+## Access & Security
+*   **Route**: `/manager` (Login) -> `/admin/nexus` (Dashboard).
+*   **Authentication**: Secured via a local token (`amora_admin_token`). If the token is missing, users are redirected to the manager login page.
+
+## Key Modules
+
+### 1. Control Room (Dashboard)
+*   **System Pulse**: Displays simulated real-time metrics (CPU, Memory, Network) and "Resonance Load".
+*   **Pending Verifications**: A feed of recent user actions or payment requests requiring attention.
+*   **Quick Actions**: Shortcuts to "Verify Payments" and "Lab Upload".
+
+### 2. Citizens Database (User Management)
+*   **View**: Lists all registered users with their avatars, email, and current subscription plan ("Protocol").
+*   **Management Actions**:
+    *   **Modify Protocol**: Allows the admin to manually change a user's subscription tier (Free, Pro, Elite, Creator). This directly updates the `users` collection in Firestore.
+    *   **Restrict Access**: Permanently deletes a user from the database (`deleteDoc` on `users` collection), effectively banning them.
+
+### 3. Pending Synchronizations (Payment Processing)
+*   **Function**: Manages manual payment proofs uploaded by users for subscription upgrades.
+*   **Workflow**:
+    *   **View**: Shows pending payment requests, including screenshot proofs, amounts, and user details.
+    *   **Authorize Ascension (Approve)**:
+        1.  Updates the payment status to `approved`.
+        2.  Automatically upgrades the user's plan in the `users` collection to the requested tier.
+    *   **Reject**: Marks the payment as rejected and keeps the user on their current plan.
+
+### 4. Archives Index (Content Management)
+*   **Location**: `/manager/contents`
+*   **Scope**: Aggregates all persistent media content:
+    *   `gallery_images`
+    *   `gallery_videos`
+    *   `happy_tracks`
+*   **Deletion Logic**:
+    *   **Cloudinary**: Uses the artifact's `publicId` to perform a secure API deletion request to Cloudinary.
+    *   **Firestore**: Removes the corresponding document from the correct source collection.
+    *   **Indexing**: Handles cleanup of the "Hero" content if the deleted item was currently featured.
+
+### 5. Media Labs (Uploaders)
+The Nexus provides specialized upload interfaces for different content verticals:
+*   **Media Lab**: General cinematic video uploads (`gallery_videos`).
+*   **Visual Lab**: High-res photography uploads (`gallery_images`).
+*   **Mood Architecture**: Content tagged with specific emotional resonances (`mood_content`).
+*   **Happy Lab**: Dedicated uploader for the "Happy Core" experience (`happy_tracks`), automatically stripped of description fields.
+*   **Create Short**: Vertical short-form video content (`shorts`).
+
+## Technical Architecture
+*   **Frontend**: React + TypeScript with Tailwind CSS for styling.
+*   **Database**: Firebase Firestore (for metadata) and Cloudinary (for media assets).
+*   **State Management**: Real-time Firestore listeners and local React state.
+*   **UI/UX**: Custom "Amora" design system featuring glassmorphism, gold accents (`#e9c49a`), and sophisticated micro-interactions.
