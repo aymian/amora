@@ -122,6 +122,7 @@ export default function PaymentVerification() {
         try {
             const workerEmail = localStorage.getItem("amora_worker_email") || "unknown";
 
+            // 1. Update Payment Record
             await updateDoc(doc(db, "payments", paymentId), {
                 status: action === "verify" ? "verified" : "rejected",
                 verifiedAt: serverTimestamp(),
@@ -130,10 +131,21 @@ export default function PaymentVerification() {
                 flags: selectedFlags.length > 0 ? selectedFlags : null
             });
 
+            // 2. If verified, auto-upgrade User Plan in real-time
+            if (action === "verify") {
+                await updateDoc(doc(db, "users", selectedPayment.userId), {
+                    plan: selectedPayment.plan,
+                    lastUpgradeAt: serverTimestamp(),
+                    isSubscribed: true
+                });
+            }
+
             toast.success(
-                action === "verify" ? "Payment Verified" : "Payment Rejected",
+                action === "verify" ? "Resonance Ascension Complete" : "Resonance Rejected",
                 {
-                    description: `Payment ${paymentId} has been ${action === "verify" ? "verified" : "rejected"} successfully.`
+                    description: action === "verify"
+                        ? `User plan has been upgraded to ${selectedPayment.plan.toUpperCase()}.`
+                        : "Payment has been flagged and rejected."
                 }
             );
 
@@ -142,8 +154,8 @@ export default function PaymentVerification() {
             setSelectedFlags([]);
         } catch (error) {
             console.error("Verification error:", error);
-            toast.error("Verification Failed", {
-                description: "Failed to update payment status. Please try again."
+            toast.error("Bridge Link Failed", {
+                description: "Failed to synchronize status. Please check your connection."
             });
         }
     };

@@ -15,7 +15,7 @@ import {
     ArrowUpRight,
     PlayCircle
 } from 'lucide-react';
-import { collection, query, getDocs, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, updateDoc, doc, deleteDoc, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
@@ -31,26 +31,89 @@ interface Worker {
     createdAt?: any;
 }
 
+interface OperationalLog {
+    id: string;
+    workerEmail: string;
+    action: string;
+    targetUser: string;
+    timestamp: any;
+}
+
 const WorkersControlCenter = () => {
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+    const [operationalLogs, setOperationalLogs] = useState<OperationalLog[]>([]);
+    const [workerStats, setWorkerStats] = useState<Record<string, number>>({});
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchWorkers();
+        const unsubLogs = setupOperationalLogs();
+        return () => {
+            if (unsubLogs) unsubLogs();
+        };
     }, []);
+
+    const setupOperationalLogs = () => {
+        // Fetch a larger batch of recent payments and filter/sort client-side 
+        // to guarantee zero index errors
+        const q = query(
+            collection(db, 'payments'),
+            limit(100)
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const allPayments = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            const logs = allPayments
+                .filter((p: any) => ['verified', 'rejected', 'approved'].includes(p.status))
+                .map((data: any) => ({
+                    id: data.id,
+                    workerEmail: data.verifiedBy || data.approvedBy || 'System',
+                    action: data.status === 'verified' || data.status === 'approved' ? 'approved payment' : 'rejected resonance',
+                    targetUser: data.userName || 'Unknown Citizen',
+                    timestamp: data.verifiedAt || data.approvedAt || data.createdAt
+                }));
+
+            // Client-side sort by timestamp descending
+            logs.sort((a, b) => {
+                const timeA = a.timestamp?.toMillis?.() || (a.timestamp?.seconds * 1000) || 0;
+                const timeB = b.timestamp?.toMillis?.() || (b.timestamp?.seconds * 1000) || 0;
+                return timeB - timeA;
+            });
+
+            setOperationalLogs(logs.slice(0, 10));
+        });
+    };
 
     const fetchWorkers = async () => {
         try {
-            const q = query(collection(db, 'workers'), orderBy('createdAt', 'desc'));
+            const q = query(collection(db, 'workers'));
             const snapshot = await getDocs(q);
             const workerData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             })) as Worker[];
+
+            // Client-side sort to avoid index requirements
+            workerData.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             setWorkers(workerData);
+
+            // Fetch stats for all workers
+            const paymentsSnap = await getDocs(collection(db, 'payments'));
+            const stats: Record<string, number> = {};
+            paymentsSnap.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.verifiedBy) {
+                    stats[data.verifiedBy] = (stats[data.verifiedBy] || 0) + 1;
+                }
+            });
+            setWorkerStats(stats);
         } catch (error) {
             console.error("Error fetching workers:", error);
         } finally {
@@ -204,17 +267,26 @@ const WorkersControlCenter = () => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
-                            {[1, 2, 3, 4, 5].map((_, i) => (
-                                <div key={i} className="flex gap-3 items-start">
-                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-white/10" />
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-white/80 leading-relaxed">
-                                            <span className="text-[#e9c49a]">Worker_{12 + i}</span> approved payment for user <span className="text-white/40">#8821</span>
-                                        </p>
-                                        <p className="text-[9px] text-white/20 font-mono">1{i} mins ago</p>
-                                    </div>
+                            {operationalLogs.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                                    <Activity className="w-8 h-8 text-white/5 mb-2" />
+                                    <p className="text-[10px] text-white/20 uppercase tracking-widest font-medium">No live transmissions</p>
                                 </div>
-                            ))}
+                            ) : (
+                                operationalLogs.map((log) => (
+                                    <div key={log.id} className="flex gap-3 items-start animate-in fade-in slide-in-from-right-2 duration-500">
+                                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#e9c49a]/30" />
+                                        <div className="space-y-1">
+                                            <p className="text-xs text-white/80 leading-relaxed">
+                                                <span className="text-[#e9c49a]">{log.workerEmail.split('@')[0]}</span> {log.action} for <span className="text-white/40">{log.targetUser}</span>
+                                            </p>
+                                            <p className="text-[9px] text-white/20 font-mono">
+                                                {log.timestamp ? getTimeElapsed(log.timestamp) : 'Moment ago'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
 
@@ -248,12 +320,12 @@ const WorkersControlCenter = () => {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
-                                        <p className="text-[8px] uppercase text-white/20 font-bold">Tasks Today</p>
-                                        <p className="text-xl font-display">24</p>
+                                        <p className="text-[8px] uppercase text-white/20 font-bold">Total Tasks</p>
+                                        <p className="text-xl font-display">{workerStats[selectedWorker.email] || 0}</p>
                                     </div>
                                     <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-1">
-                                        <p className="text-[8px] uppercase text-white/20 font-bold">Avg Speed</p>
-                                        <p className="text-xl font-display text-emerald-500">2m 30s</p>
+                                        <p className="text-[8px] uppercase text-white/20 font-bold">Efficiency</p>
+                                        <p className="text-xl font-display text-emerald-500">Stable</p>
                                     </div>
                                 </div>
 
@@ -301,6 +373,21 @@ const WorkersControlCenter = () => {
             `}</style>
         </div>
     );
+};
+
+const getTimeElapsed = (timestamp: any) => {
+    if (!timestamp) return "Unknown";
+    const now = Date.now();
+    const created = timestamp.toMillis ? timestamp.toMillis() : (timestamp.seconds * 1000);
+    const diff = now - created;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return "Just now";
 };
 
 export default WorkersControlCenter;
