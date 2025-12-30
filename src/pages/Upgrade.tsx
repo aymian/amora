@@ -252,31 +252,56 @@ export default function Upgrade() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => handlePlanAction(plan.tier)}
-                                    disabled={processing || userData?.plan === plan.tier}
-                                    className={cn(
+                                {(() => {
+                                    const currentRank = planHierarchy[(userData?.plan || 'free').toLowerCase()] ?? 0;
+                                    const targetRank = planHierarchy[plan.tier];
+                                    const isCurrent = userData?.plan === plan.tier;
+                                    const isUpgrade = targetRank > currentRank;
+
+                                    const baseClasses = cn(
                                         "w-full mt-12 py-5 rounded-[2rem] font-bold text-[10px] uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-3 active:scale-95 group",
-                                        userData?.plan === plan.tier
+                                        isCurrent
                                             ? "bg-white/5 text-white/20 cursor-default"
-                                            : planHierarchy[plan.tier] < planHierarchy[userData?.plan || 'free']
+                                            : !isUpgrade
                                                 ? "bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white"
                                                 : plan.tier === 'creator'
                                                     ? "bg-white text-black hover:bg-[#e9c49a]"
                                                     : plan.popular
                                                         ? "bg-[#e9c49a] text-black hover:bg-white"
                                                         : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                                    )}
-                                >
-                                    {processing && <Activity className="w-4 h-4 animate-spin" />}
-                                    {userData?.plan === plan.tier
-                                        ? "Current Level"
-                                        : planHierarchy[plan.tier] < planHierarchy[userData?.plan || 'free']
-                                            ? "Request Sync (Free)"
-                                            : plan.buttonText
+                                    );
+
+                                    if (isUpgrade) {
+                                        return (
+                                            <a
+                                                href={`/payment?tier=${plan.tier}`}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    navigate(`/payment?tier=${plan.tier}`);
+                                                }}
+                                                className={baseClasses}
+                                            >
+                                                {plan.buttonText}
+                                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            </a>
+                                        );
                                     }
-                                    {userData?.plan !== plan.tier && !processing && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
-                                </button>
+
+                                    return (
+                                        <button
+                                            onClick={() => handlePlanAction(plan.tier)}
+                                            disabled={processing || isCurrent}
+                                            className={baseClasses}
+                                        >
+                                            {processing && <Activity className="w-4 h-4 animate-spin" />}
+                                            {isCurrent
+                                                ? "Current Level"
+                                                : "Request Sync (Free)"
+                                            }
+                                            {!isCurrent && !processing && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                                        </button>
+                                    );
+                                })()}
                             </motion.div>
                         ))}
                     </div>

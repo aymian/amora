@@ -197,6 +197,17 @@ export default function Payment() {
                                 {/* Verification Inputs */}
                                 <div className="space-y-6">
                                     <div className="space-y-2">
+                                        <label className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20 px-1">Source Phone Number</label>
+                                        <input
+                                            required
+                                            type="tel"
+                                            placeholder="The MoMo number you sent from"
+                                            value={momoNumber}
+                                            onChange={(e) => setMomoNumber(e.target.value)}
+                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-white outline-none focus:border-[#e9c49a]/40 transition-colors placeholder:text-white/5"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
                                         <label className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20 px-1">Sender's Registration Name</label>
                                         <input
                                             required
