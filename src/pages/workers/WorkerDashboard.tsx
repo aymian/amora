@@ -26,6 +26,7 @@ import {
 import { getRoleDefinition, WorkerRole } from '@/types/roles';
 import ShortUpload from './ShortUpload';
 import VisualAssetManager from './VisualAssetManager';
+import SupportQueue from './SupportQueue';
 
 // Initial Mock Content for Dashboard
 const DashboardWelcome = ({ roleLabel }: { roleLabel: string }) => (
@@ -125,7 +126,7 @@ const WorkerDashboard = () => {
         if (['user_support_agent'].includes(activeRole)) {
             return [
                 ...base,
-                { icon: Users, label: 'User Tickets', alert: true },
+                { icon: Users, label: 'User Tickets', id: 'support-tickets', alert: true },
                 { icon: FileText, label: 'Knowledge Base' }
             ];
         }
@@ -265,6 +266,8 @@ const WorkerDashboard = () => {
                         <ShortUpload />
                     ) : activeTab === 'visual-manager' ? (
                         <VisualAssetManager />
+                    ) : activeTab === 'support-tickets' ? (
+                        <SupportQueue />
                     ) : (
                         <DashboardWelcome roleLabel={roleDef.label} />
                     )}

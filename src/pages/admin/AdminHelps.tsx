@@ -30,6 +30,8 @@ const AdminHelps = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
+    const [reply, setReply] = useState("");
+    const [sendingReply, setSendingReply] = useState(false);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -52,14 +54,34 @@ const AdminHelps = () => {
 
     const handleUpdateStatus = async (id: string, status: string) => {
         try {
-            await updateDoc(doc(db, "help_requests", id), { status });
-            setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-            if (selectedRequest?.id === id) {
-                setSelectedRequest({ ...selectedRequest, status });
+            const updatePayload: any = { status };
+            if (status === 'resolved' && reply.trim()) {
+                updatePayload.reply = reply.trim();
+                updatePayload.repliedAt = new Date();
+                updatePayload.repliedBy = 'Administrator';
             }
+
+            await updateDoc(doc(db, "help_requests", id), updatePayload);
+
+            setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updatePayload } : r));
+            if (selectedRequest?.id === id) {
+                setSelectedRequest({ ...selectedRequest, ...updatePayload });
+            }
+            setReply("");
             toast.success(`Request status updated to ${status}.`);
         } catch (error) {
             toast.error("Status update protocol failed.");
+        }
+    };
+
+    const handleSendReply = async () => {
+        if (!reply.trim()) return toast.error("Transmission Error: Empty narrative.");
+        setSendingReply(true);
+        try {
+            await handleUpdateStatus(selectedRequest.id, 'resolved');
+            setSelectedRequest(null);
+        } finally {
+            setSendingReply(false);
         }
     };
 
@@ -214,6 +236,28 @@ const AdminHelps = () => {
                                     </p>
                                 </div>
 
+                                {selectedRequest.reply ? (
+                                    <div className="p-8 bg-emerald-500/[0.03] border border-emerald-500/10 rounded-[2rem] space-y-4">
+                                        <p className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Transmitted Solution</p>
+                                        <p className="text-sm text-emerald-500/80 leading-relaxed italic whitespace-pre-wrap font-medium">
+                                            "{selectedRequest.reply}"
+                                        </p>
+                                    </div>
+                                ) : selectedRequest.status === 'pending' && (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between ml-1">
+                                            <p className="text-[10px] uppercase tracking-widest text-[#e9c49a] font-bold">Intel Response Protocol</p>
+                                            <span className="text-[8px] text-white/20 uppercase font-bold tracking-widest italic">Direct Line Active</span>
+                                        </div>
+                                        <textarea
+                                            placeholder="Enter technical guidance or resolution steps..."
+                                            value={reply}
+                                            onChange={(e) => setReply(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/5 rounded-[2rem] py-5 px-6 text-sm outline-none focus:border-[#e9c49a]/40 transition-all h-32 resize-none"
+                                        />
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 space-y-1">
                                         <p className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Transmission Log</p>
@@ -232,17 +276,19 @@ const AdminHelps = () => {
                             <div className="flex gap-4 pt-6">
                                 {selectedRequest.status === 'pending' ? (
                                     <button
-                                        onClick={() => handleUpdateStatus(selectedRequest.id, 'resolved')}
-                                        className="flex-1 py-4 bg-emerald-500 text-black rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-white transition-all active:scale-95 shadow-xl"
+                                        onClick={handleSendReply}
+                                        disabled={sendingReply}
+                                        className="flex-1 py-4 bg-[#e9c49a] text-black rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-white transition-all active:scale-95 shadow-xl disabled:opacity-50"
                                     >
-                                        <Check className="w-4 h-4 inline-block mr-2" /> Mark Resolved
+                                        {sendingReply ? <Loader2 className="w-4 h-4 animate-spin mr-2 inline" /> : <Send className="w-4 h-4 inline-block mr-2" />}
+                                        Transmit Solution
                                     </button>
                                 ) : (
                                     <button
                                         onClick={() => handleUpdateStatus(selectedRequest.id, 'pending')}
                                         className="flex-1 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95"
                                     >
-                                        <Clock className="w-4 h-4 inline-block mr-2" /> Re-open Protocol
+                                        <Clock className="w-4 h-4 inline-block mr-2" /> Re-activate Protocol
                                     </button>
                                 )}
                                 <button
@@ -260,7 +306,7 @@ const AdminHelps = () => {
     );
 };
 
-// ChevronRight import
-import { ChevronRight } from 'lucide-react';
+// ChevronRight and Send import
+import { ChevronRight, Send, Loader2 } from 'lucide-react';
 
 export default AdminHelps;
