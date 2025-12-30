@@ -33,6 +33,10 @@ import ResetPassword from "./pages/ResetPassword";
 import Happy from "./pages/Happy";
 import Sad from "./pages/Sad";
 import NotFound from "./pages/NotFound";
+import WorkerLogin from "./pages/workers/WorkerLogin";
+import WorkerSignup from "./pages/workers/WorkerSignup";
+import RoleSelection from "./pages/workers/RoleSelection";
+import WorkerDashboard from "./pages/workers/WorkerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +77,13 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/happy" element={<Happy />} />
           <Route path="/sad" element={<Sad />} />
+
+          {/* Worker System Routes */}
+          <Route path="/workers/login" element={<WorkerLogin />} />
+          <Route path="/workers/signup" element={<WorkerSignup />} />
+          <Route path="/workers/select-role" element={<RoleSelection />} />
+          <Route path="/workers/dashboard" element={<WorkerDashboard />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
