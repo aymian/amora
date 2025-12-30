@@ -80,9 +80,10 @@ import { AnimatePresence, motion } from "framer-motion";
 interface DashboardLayoutProps {
     children: React.ReactNode;
     user: any;
+    hideSidebar?: boolean;
 }
 
-export function DashboardLayout({ children, user }: DashboardLayoutProps) {
+export function DashboardLayout({ children, user, hideSidebar = false }: DashboardLayoutProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -860,96 +861,104 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             <div className="flex flex-1 pt-16 h-screen overflow-hidden relative">
 
                 {/* Fixed Sidebar */}
-                <aside className={cn(
-                    "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#0D121F] to-[#0B0F1A] border-r border-white/5 pt-8",
-                    isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-                )}>
-                    <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
-                        <div className="flex flex-col gap-6">
-                            {getMenuItems().map((group: any) => (
-                                <div key={group.label} className="space-y-1">
-                                    <p className="px-4 text-[10px] uppercase tracking-[0.3em] text-white/20 font-bold mb-2">{group.label}</p>
-                                    {group.items.map((item: any) => {
-                                        const isActive = location.pathname === item.path;
-                                        const isLocked = item.locked;
-                                        const isSpecial = item.special;
+                {!hideSidebar && (
+                    <aside className={cn(
+                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#0D121F] to-[#0B0F1A] border-r border-white/5 pt-8",
+                        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                    )}>
+                        <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
+                            <div className="flex flex-col gap-6">
+                                {getMenuItems().map((group: any) => (
+                                    <div key={group.label} className="space-y-1">
+                                        <p className="px-4 text-[10px] uppercase tracking-[0.3em] text-white/20 font-bold mb-2">{group.label}</p>
+                                        {group.items.map((item: any) => {
+                                            const isActive = location.pathname === item.path;
+                                            const isLocked = item.locked;
+                                            const isSpecial = item.special;
 
-                                        return (
-                                            <button
-                                                key={item.label}
-                                                onClick={() => {
-                                                    const isLockedCurrent = user?.plan === 'free' && timerPhase === 'upgrade';
-                                                    if (isLockedCurrent && item.path !== '/upgrade') {
-                                                        toast.error("Protocol Locked: Complete synchronization to regain access.");
-                                                        return;
-                                                    }
-                                                    if (!isLocked) navigate(item.path);
-                                                }}
-                                                className={cn(
-                                                    "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
-                                                    isActive
-                                                        ? "bg-white/[0.04] text-white shadow-[inset_0_0_20px_rgba(233,196,154,0.05)]"
-                                                        : isLocked
-                                                            ? "opacity-50 cursor-not-allowed grayscale"
-                                                            : "text-white/40 hover:text-white hover:bg-white/[0.02]",
-                                                    isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10",
-                                                    (user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
-                                                )}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    {isActive && (
-                                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#e9c49a] rounded-r-full shadow-[0_0_10px_#e9c49a]" />
+                                            return (
+                                                <button
+                                                    key={item.label}
+                                                    onClick={() => {
+                                                        const isLockedCurrent = user?.plan === 'free' && timerPhase === 'upgrade';
+                                                        if (isLockedCurrent && item.path !== '/upgrade') {
+                                                            toast.error("Protocol Locked: Complete synchronization to regain access.");
+                                                            return;
+                                                        }
+                                                        if (!isLocked) navigate(item.path);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
+                                                        isActive
+                                                            ? "bg-white/[0.04] text-white shadow-[inset_0_0_20px_rgba(233,196,154,0.05)]"
+                                                            : isLocked
+                                                                ? "opacity-50 cursor-not-allowed grayscale"
+                                                                : "text-white/40 hover:text-white hover:bg-white/[0.02]",
+                                                        isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10",
+                                                        (user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
                                                     )}
-                                                    <item.icon className={cn(
-                                                        "w-4 h-4 transition-all",
-                                                        isActive || isSpecial ? "text-[#e9c49a] drop-shadow-[0_0_8px_rgba(233,196,154,0.5)]" : "group-hover:text-[#e9c49a]"
-                                                    )} />
-                                                    <span className="text-xs font-light tracking-wide">{item.label}</span>
-                                                </div>
-
-                                                {isLocked && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Lock className="w-3 h-3 text-[#e9c49a]/60" />
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {isActive && (
+                                                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#e9c49a] rounded-r-full shadow-[0_0_10px_#e9c49a]" />
+                                                        )}
+                                                        <item.icon className={cn(
+                                                            "w-4 h-4 transition-all",
+                                                            isActive || isSpecial ? "text-[#e9c49a] drop-shadow-[0_0_8px_rgba(233,196,154,0.5)]" : "group-hover:text-[#e9c49a]"
+                                                        )} />
+                                                        <span className="text-xs font-light tracking-wide">{item.label}</span>
                                                     </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ))}
-                        </div>
 
-                        <div className="space-y-4 pt-8 border-t border-white/5">
-                            <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
-                                <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
-                                    {user?.plan === 'free' ? 'Explorer Status' :
-                                        user?.plan === 'pro' ? 'Resonance Tier' :
-                                            user?.plan === 'elite' ? 'Elite Sovereign' :
-                                                user?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
-                                </p>
-                                <p className="text-[9px] text-white/40 font-light leading-relaxed">
-                                    {user?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
-                                        user?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
-                                            user?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
-                                                user?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
-                                                    'Welcome to the future of cinematic narrative.'}
-                                </p>
+                                                    {isLocked && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Lock className="w-3 h-3 text-[#e9c49a]/60" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
                             </div>
 
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all group"
-                            >
-                                <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                <span className="text-xs font-light">Sign Out</span>
-                            </button>
+                            <div className="space-y-4 pt-8 border-t border-white/5">
+                                <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
+                                    <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
+                                        {user?.plan === 'free' ? 'Explorer Status' :
+                                            user?.plan === 'pro' ? 'Resonance Tier' :
+                                                user?.plan === 'elite' ? 'Elite Sovereign' :
+                                                    user?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
+                                    </p>
+                                    <p className="text-[9px] text-white/40 font-light leading-relaxed">
+                                        {user?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
+                                            user?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
+                                                user?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
+                                                    user?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
+                                                        'Welcome to the future of cinematic narrative.'}
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all group"
+                                >
+                                    <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                    <span className="text-xs font-light">Sign Out</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </aside>
+                    </aside>
+                )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 md:ml-[240px] overflow-y-auto bg-[#0B0F1A] custom-scrollbar relative">
-                    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 relative min-h-full">
+                <main className={cn(
+                    "flex-1 overflow-y-auto bg-[#0B0F1A] custom-scrollbar relative",
+                    !hideSidebar && "md:ml-[240px]"
+                )}>
+                    <div className={cn(
+                        "p-6 lg:p-10 mx-auto space-y-10 relative min-h-full",
+                        hideSidebar ? "w-full max-w-none px-0 py-0" : "max-w-7xl"
+                    )}>
                         {children}
 
                         {/* Orbital Upgrade Blocker - Absolute Phase Lock */}
