@@ -21,7 +21,8 @@ import {
     XCircle,
     Heart,
     Image as ImageIcon,
-    Sun
+    Sun,
+    HelpCircle
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/Logo";
@@ -178,6 +179,7 @@ const AdminNexus = () => {
         { id: 'happy-upload', icon: Film, label: 'Happy Lab', path: '/happy-upload' },
         { id: 'content', icon: Flame, label: 'Contents', path: '/manager/contents' },
         { id: 'users', icon: Users, label: 'Citizens' },
+        { id: 'helps', icon: HelpCircle, label: 'Support Queue', path: '/manager/helps', alert: true },
         { id: 'analytics', icon: Activity, label: 'System Pulse' },
         { id: 'settings', icon: Settings, label: 'Nexus Settings' },
     ];

@@ -48,6 +48,7 @@ import {
     Sun,
     CloudRain,
     Receipt,
+    UploadCloud,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -537,6 +538,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: Sun, label: "Happy Core", path: "/happy" },
                             { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short-videos", path: "/short-videos" },
+                            { icon: UploadCloud, label: "Upload Short", path: "/create-short" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
                             { icon: Film, label: "Happy Lab", path: "/happy-upload" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },

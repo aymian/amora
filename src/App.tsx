@@ -34,12 +34,17 @@ import ResetPassword from "./pages/ResetPassword";
 import Happy from "./pages/Happy";
 import Sad from "./pages/Sad";
 import Updates from "./pages/Updates";
+import Help from "./pages/Help";
+import AdminHelps from "./pages/admin/AdminHelps";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/terms";
+import PrivacyPolicy from "./pages/privacy-policy";
 import WorkerLogin from "./pages/workers/WorkerLogin";
 import WorkerSignup from "./pages/workers/WorkerSignup";
 import RoleSelection from "./pages/workers/RoleSelection";
 import WorkerDashboard from "./pages/workers/WorkerDashboard";
 import PaymentVerification from "./pages/workers/PaymentVerification";
+import ShortUpload from './pages/workers/ShortUpload';
 import WorkersControlCenter from "./pages/admin/workers/WorkersControlCenter";
 import WorkerProfile from "./pages/admin/workers/WorkerProfile";
 
@@ -54,6 +59,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+           <Route path="/terms" element={<Terms />} />
+           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/signup" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -86,6 +93,8 @@ const App = () => (
           <Route path="/happy" element={<Happy />} />
           <Route path="/sad" element={<Sad />} />
           <Route path="/updates" element={<Updates />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/manager/helps" element={<AdminHelps />} />
 
           {/* Worker System Routes */}
           <Route path="/workers/login" element={<WorkerLogin />} />
@@ -93,6 +102,7 @@ const App = () => (
           <Route path="/workers/select-role" element={<RoleSelection />} />
           <Route path="/workers/dashboard" element={<WorkerDashboard />} />
           <Route path="/workers/payment-verification" element={<PaymentVerification />} />
+          <Route path="/workers/upload-short" element={<ShortUpload />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

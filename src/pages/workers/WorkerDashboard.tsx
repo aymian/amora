@@ -20,9 +20,12 @@ import {
     Activity,
     Clock,
     Zap,
-    Settings
+    Settings,
+    LayoutGrid
 } from 'lucide-react';
 import { getRoleDefinition, WorkerRole } from '@/types/roles';
+import ShortUpload from './ShortUpload';
+import VisualAssetManager from './VisualAssetManager';
 
 // Initial Mock Content for Dashboard
 const DashboardWelcome = ({ roleLabel }: { roleLabel: string }) => (
@@ -67,6 +70,7 @@ const DashboardWelcome = ({ roleLabel }: { roleLabel: string }) => (
 const WorkerDashboard = () => {
     const [activeRole, setActiveRole] = useState<WorkerRole | null>(null);
     const [roleDef, setRoleDef] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const navigate = useNavigate();
 
@@ -126,6 +130,26 @@ const WorkerDashboard = () => {
             ];
         }
 
+        // Short Video Roles
+        if (activeRole === 'short_video_operator') {
+            return [
+                ...base,
+                { icon: UploadCloud, label: 'Upload Short', id: 'upload-short' },
+                { icon: Film, label: 'Operator Stats' },
+                { icon: FileText, label: 'Retention Logs' }
+            ];
+        }
+
+        // Visual Asset Roles
+        if (activeRole === 'visual_asset_manager') {
+            return [
+                ...base,
+                { icon: ImageIcon, label: 'Visual Nexus', id: 'visual-manager' },
+                { icon: LayoutGrid, label: 'Gallery Analytics' },
+                { icon: FileText, label: 'Metadata Logs' }
+            ];
+        }
+
         // Default Fallback
         return [
             ...base,
@@ -158,17 +182,21 @@ const WorkerDashboard = () => {
                     {menuItems.map((item: any, idx) => (
                         <button
                             key={idx}
-                            onClick={() => item.path && navigate(item.path)}
+                            onClick={() => {
+                                if (item.id) setActiveTab(item.id);
+                                else if (item.path) navigate(item.path);
+                                else setActiveTab('dashboard');
+                            }}
                             className={cn(
                                 "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group relative",
-                                item.active
+                                (item.id ? activeTab === item.id : item.active && activeTab === 'dashboard')
                                     ? "bg-white/[0.04] text-white shadow-[inset_0_0_20px_rgba(233,196,154,0.05)] border border-white/5"
                                     : "text-white/30 hover:text-white/60 hover:bg-white/[0.02]"
                             )}
                         >
                             <item.icon className={cn(
                                 "w-4 h-4 transition-all min-w-[16px]",
-                                item.active ? "text-[#e9c49a]" : "group-hover:text-white"
+                                (item.id ? activeTab === item.id : item.active && activeTab === 'dashboard') ? "text-[#e9c49a]" : "group-hover:text-white"
                             )} />
                             {isSidebarOpen && (
                                 <span className="text-xs font-light tracking-wide whitespace-nowrap">{item.label}</span>
@@ -231,7 +259,15 @@ const WorkerDashboard = () => {
                 </header>
 
                 <div className="p-10 max-w-7xl mx-auto pb-20">
-                    <DashboardWelcome roleLabel={roleDef.label} />
+                    {activeTab === 'dashboard' ? (
+                        <DashboardWelcome roleLabel={roleDef.label} />
+                    ) : activeTab === 'upload-short' ? (
+                        <ShortUpload />
+                    ) : activeTab === 'visual-manager' ? (
+                        <VisualAssetManager />
+                    ) : (
+                        <DashboardWelcome roleLabel={roleDef.label} />
+                    )}
                 </div>
             </main>
         </div>
