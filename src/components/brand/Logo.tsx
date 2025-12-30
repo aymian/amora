@@ -59,7 +59,7 @@ export function Logo({ className, size = "md", showTagline = false }: LogoProps)
                     "font-display font-light tracking-[0.25em] text-white uppercase transition-all duration-700 group-hover:tracking-[0.35em] group-hover:text-white/90",
                     currentSize.text
                 )}>
-                    amora
+                    amorra
                 </span>
                 {showTagline && (
                     <span className={cn("text-[#e9c49a]/30 font-bold uppercase tracking-[0.4em] font-sans", currentSize.tagline)}>

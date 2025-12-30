@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MobileBottomNav } from "./MobileBottomNav";
 import { auth, db } from "@/lib/firebase";
 import {
     collection,
@@ -1023,6 +1024,9 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#8b6544]/5 blur-[150px] -z-10 pointer-events-none rounded-full" />
                 </main>
             </div>
+
+            {/* Mobile Bottom Navigation */}
+            <MobileBottomNav />
 
             <style>{`
         .glass {
