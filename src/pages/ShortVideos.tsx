@@ -256,10 +256,22 @@ export default function ShortVideos() {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 setUserData(userDoc.exists() ? { id: user.uid, ...userDoc.data() } : { id: user.uid, plan: "free" });
                 await fetchVideos();
+                setLoading(false);
             } else {
-                navigate("/login");
+                const wasLoggedIn = localStorage.getItem('amora_resonance_active');
+                if (!wasLoggedIn) {
+                    navigate("/login");
+                    setLoading(false);
+                } else {
+                    // Wait for recovery
+                    setTimeout(() => {
+                        if (!auth.currentUser) {
+                            navigate("/login");
+                            setLoading(false);
+                        }
+                    }, 2000);
+                }
             }
-            setLoading(false);
         });
         return () => unsubscribe();
     }, [navigate]);

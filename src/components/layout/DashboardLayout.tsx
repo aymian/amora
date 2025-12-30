@@ -88,6 +88,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, user, hideSidebar = false }: DashboardLayoutProps) {
     const navigate = useNavigate();
     const location = useLocation();
+    const [localUser, setLocalUser] = useState<any>(user);
+    const [localLoading, setLocalLoading] = useState(!user);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -96,8 +98,42 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
+    // Sync local user with prop
     useEffect(() => {
-        if (!user?.id) return;
+        if (user) {
+            setLocalUser(user);
+            setLocalLoading(false);
+        }
+    }, [user]);
+
+    // Internal resonance check for persistence recovery
+    useEffect(() => {
+        if (localUser) return;
+
+        const unsubAuth = auth.onAuthStateChanged(async (authUser) => {
+            if (authUser) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", authUser.uid));
+                    if (userDoc.exists()) {
+                        setLocalUser({ id: authUser.uid, ...userDoc.data() });
+                    } else {
+                        setLocalUser({ id: authUser.uid, plan: "free" });
+                    }
+                } catch (err) {
+                    console.error("Resonance recovery failed:", err);
+                }
+            } else if (!user) {
+                // If definitely not logged in, we might want to stay in loading or redirect
+                // But usually the parent handles navigation
+            }
+            setLocalLoading(false);
+        });
+
+        return () => unsubAuth();
+    }, [localUser, user]);
+
+    useEffect(() => {
+        if (!localUser?.id) return;
 
         const q = query(
             collection(db, "notifications"),
@@ -113,15 +149,15 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
         });
 
         return () => unsub();
-    }, [user?.id]);
+    }, [localUser?.id]);
 
     // Fetch unread message count
     useEffect(() => {
-        if (!user?.id) return;
+        if (!localUser?.id) return;
 
         const q = query(
             collection(db, "conversations"),
-            where("participants", "array-contains", user.id)
+            where("participants", "array-contains", localUser.id)
         );
 
         const unsub = onSnapshot(q, async (snapshot) => {
@@ -799,24 +835,25 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                         <DropdownMenuTrigger asChild>
                             <div className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all group">
                                 <Avatar className="w-8 h-8 rounded-full ring-1 ring-white/10 group-hover:ring-[#e9c49a]/30 transition-all">
-                                    <AvatarImage src={user?.photoURL} />
+                                    <AvatarImage src={localUser?.photoURL} />
                                     <AvatarFallback className="bg-[#8b6544] text-[10px] uppercase">
-                                        {user?.fullName?.charAt(0) || "U"}
+                                        {localUser?.fullName?.charAt(0) || (localLoading ? "..." : "U")}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="hidden lg:block text-left mr-1">
                                     <p className="text-[11px] font-medium text-white/80 leading-tight truncate max-w-[100px]">
-                                        {user?.fullName || "Elite Member"}
+                                        {localUser?.fullName || (localLoading ? "Synchronizing..." : "Citizen")}
                                     </p>
                                     <p className={cn(
                                         "text-[9px] uppercase tracking-widest font-bold",
-                                        user?.plan === 'pro' ? "text-[#e9c49a]" :
-                                            user?.plan === 'elite' ? "text-[#d4af37]" :
-                                                user?.plan === 'creator' ? "text-purple-400" : "text-white/40"
+                                        localUser?.plan === 'pro' ? "text-[#e9c49a]" :
+                                            localUser?.plan === 'elite' ? "text-[#d4af37]" :
+                                                localUser?.plan === 'creator' ? "text-purple-400" : "text-white/40"
                                     )}>
-                                        {user?.plan === 'pro' ? "Pro Verified" :
-                                            user?.plan === 'elite' ? "Elite Sovereign" :
-                                                user?.plan === 'creator' ? "Master Creator" : "Free Explorer"}
+                                        {localLoading ? "Indexing Status" :
+                                            localUser?.plan === 'pro' ? "Pro Verified" :
+                                                localUser?.plan === 'elite' ? "Elite Sovereign" :
+                                                    localUser?.plan === 'creator' ? "Master Creator" : "Free Explorer"}
                                     </p>
                                 </div>
                                 <ChevronDown className="w-3 h-3 text-white/20 group-hover:text-white transition-colors mr-2" />

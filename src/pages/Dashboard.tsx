@@ -36,9 +36,13 @@ export default function Dashboard() {
                         const data = userDoc.data();
                         if (!data.onboardingCompleted) {
                             navigate("/onboarding");
+                            return;
                         } else {
                             setUserData({ id: user.uid, ...data });
                         }
+                    } else {
+                        // User exists in Auth but not Firestore record yet
+                        setUserData({ id: user.uid, plan: "free" });
                     }
 
                     // Fetch Gallery Data (Videos)
@@ -51,52 +55,38 @@ export default function Dashboard() {
                         console.warn("Archival gallery fetch failed:", e);
                     }
 
-                    // Also fetch the specific hero doc as priority
-                    let mainHero = null;
-                    try {
-                        const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                        if (heroDoc.exists()) {
-                            mainHero = { id: 'main-hero', ...heroDoc.data() };
-                        }
-                    } catch (e) {
-                        console.error("Hero stage fetch failed.");
-                    }
+                    // ... rest of the fetch logic ...
+                    const heroDoc = await getDoc(doc(db, "site_content", "hero"));
+                    const mainHero = heroDoc.exists() ? { id: 'main-hero', ...heroDoc.data() } : null;
 
-                    // Process Heroes (Top 5 for rotation)
                     const heroList = (mainHero ? [mainHero, ...videoItems] : videoItems)
                         .filter((item: any) => item && (item.videoUrl || item.imageUrl))
                         .slice(0, 5);
 
-                    // Deduplicate
-                    const dedupedHeroes = heroList.reduce((acc: any[], current: any) => {
-                        const isDuplicate = acc.some(item =>
-                            (item.id === current.id && item.id !== 'main-hero') ||
-                            (item.videoUrl && item.videoUrl === current.videoUrl)
-                        );
-                        if (!isDuplicate) return acc.concat([current]);
-                        return acc;
-                    }, []);
-
-                    setHeroes(dedupedHeroes);
-
-                    // Process New Releases (Next 6 items, avoiding those in heroes if possible)
-                    const releaseList = videoItems
-                        .filter(item => !dedupedHeroes.some((h: any) => h.id === item.id))
-                        .slice(0, 6);
-
-                    // Fallback to videoItems if deduped filter is too aggressive
-                    setNewReleases(releaseList.length > 0 ? releaseList : videoItems.slice(0, 6));
+                    setHeroes(heroList);
+                    setNewReleases(videoItems.slice(0, 6));
 
                 } else {
-                    navigate("/login");
+                    // Check if we were previously logged in (avoid immediate flicker redirect)
+                    const wasLoggedIn = localStorage.getItem('amora_resonance_active');
+                    if (!wasLoggedIn) {
+                        navigate("/login");
+                    } else {
+                        // Wait a bit or let DashboardLayout try to recover
+                        setTimeout(() => {
+                            if (!auth.currentUser) navigate("/login");
+                        }, 2000);
+                    }
                 }
             } catch (err: any) {
                 console.error("Dashboard sync error:", err);
-                setError(err.message);
             } finally {
                 setLoading(false);
             }
         });
+
+        // Set local flag on login
+        if (auth.currentUser) localStorage.setItem('amora_resonance_active', 'true');
 
         return () => unsubscribe();
     }, [navigate]);

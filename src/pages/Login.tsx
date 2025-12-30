@@ -52,8 +52,10 @@ export default function Login() {
                 const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
 
                 if (userDoc.exists() && userDoc.data().onboardingCompleted) {
+                    localStorage.setItem('amora_resonance_active', 'true');
                     navigate("/dashboard");
                 } else {
+                    localStorage.setItem('amora_resonance_active', 'true');
                     navigate("/onboarding");
                 }
             } else {
@@ -71,6 +73,7 @@ export default function Login() {
                     onboardingCompleted: false
                 });
 
+                localStorage.setItem('amora_resonance_active', 'true');
                 navigate("/onboarding");
             }
         } catch (error: any) {
@@ -96,10 +99,13 @@ export default function Login() {
                     plan: "free",
                     onboardingCompleted: false
                 });
+                localStorage.setItem('amora_resonance_active', 'true');
                 navigate("/onboarding");
             } else if (userDoc.data().onboardingCompleted) {
+                localStorage.setItem('amora_resonance_active', 'true');
                 navigate("/dashboard");
             } else {
+                localStorage.setItem('amora_resonance_active', 'true');
                 navigate("/onboarding");
             }
         } catch (error: any) {
