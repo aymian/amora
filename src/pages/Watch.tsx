@@ -65,6 +65,8 @@ export default function Watch() {
     const [muted, setMuted] = useState(true);
     const [showControls, setShowControls] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+    const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(true);
     const controlsTimeoutRef = useRef<any>(null);
 
     // 1. Auth Observer
@@ -235,6 +237,15 @@ export default function Watch() {
         }
     };
 
+    const handleVideoEnd = () => {
+        if (isAutoplayEnabled && nextSequences.length > 0) {
+            const nextSeq = nextSequences[0];
+            navigate(`/watch?name=${encodeURIComponent(nextSeq.title)}&id=${nextSeq.id}`);
+        } else {
+            setPlaying(false);
+        }
+    };
+
     const handleTimeUpdate = () => {
         if (videoRef.current) {
             setPlayed(videoRef.current.currentTime / videoRef.current.duration);
@@ -298,10 +309,25 @@ export default function Watch() {
     return (
         <DashboardLayout user={userData}>
             <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col pt-4 pb-20">
-                <main className="max-w-[1850px] mx-auto w-full px-4 lg:px-8 py-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                <main className="max-w-[1920px] mx-auto w-full px-4 lg:px-12 py-4">
+                    <div className="flex flex-col lg:flex-row gap-10">
                         {/* Left Side: Video Player & Info */}
-                        <div className="lg:col-span-9 space-y-10">
+                        <div className={cn(
+                            "flex-1 space-y-10 transition-all duration-500 ease-in-out",
+                            isSidebarCollapsed ? "w-full" : "lg:w-[75%]"
+                        )}>
+                            {/* Video Player Header with Toggle */}
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-4">
+                                    <button 
+                                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                        className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/40 hover:text-white"
+                                    >
+                                        <Layers className={cn("w-5 h-5 transition-transform", !isSidebarCollapsed && "text-blue-500")} />
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Video Container - Premium Rounded Aesthetics */}
                             <div className="relative group">
                                 <motion.div
@@ -326,6 +352,7 @@ export default function Watch() {
                                         onTimeUpdate={handleTimeUpdate}
                                         onDurationChange={() => setDuration(videoRef.current?.duration || 0)}
                                         onLoadedMetadata={handleLoadedMetadata}
+                                        onEnded={handleVideoEnd}
                                         onClick={handleTogglePlay}
                                     />
 
@@ -454,70 +481,91 @@ export default function Watch() {
                         </div>
 
                         {/* Right Side: Next Up & Apps */}
-                        <div className="lg:col-span-3 space-y-10">
-                            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-8">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/60">NEXT UP</h3>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-bold text-white/20">AUTOPLAY ON</span>
-                                        <div className="w-8 h-4 bg-blue-600 rounded-full relative">
-                                            <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full" />
+                        <AnimatePresence>
+                            {!isSidebarCollapsed && (
+                                <motion.div 
+                                    initial={{ opacity: 0, x: 50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 50 }}
+                                    className="lg:w-[350px] xl:w-[450px] space-y-10 flex-shrink-0"
+                                >
+                                    <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-8 h-full">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-black uppercase tracking-widest text-white/60">NEXT UP</h3>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">AUTOPLAY</span>
+                                                <button 
+                                                    onClick={() => setIsAutoplayEnabled(!isAutoplayEnabled)}
+                                                    className={cn(
+                                                        "w-10 h-5 rounded-full relative transition-colors duration-300 ring-1 ring-white/10",
+                                                        isAutoplayEnabled ? "bg-blue-600" : "bg-white/10"
+                                                    )}
+                                                >
+                                                    <motion.div 
+                                                        animate={{ x: isAutoplayEnabled ? 20 : 2 }}
+                                                        className="absolute top-1 w-3 h-3 bg-white rounded-full transition-all shadow-sm"
+                                                    />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            {nextSequences.slice(0, 8).map((seq, i) => (
+                                                <div
+                                                    key={seq.id}
+                                                    onClick={() => navigate(`/watch?name=${encodeURIComponent(seq.title)}&id=${seq.id}`)}
+                                                    className="flex gap-4 cursor-pointer group"
+                                                >
+                                                    <div className="w-40 aspect-[16/9] rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/5 group-hover:border-blue-500/30 transition-all">
+                                                        <img src={seq.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                                                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 rounded-md text-[9px] font-bold">
+                                                            {seq.duration ? formatTime(seq.duration) : "0:39"}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 py-1 flex-1">
+                                                        <h4 className="text-[12px] font-black uppercase leading-[1.3] group-hover:text-blue-500 transition-colors">
+                                                            {(i + 1).toString().padStart(2, '0')} {seq.title.toUpperCase()}
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] text-white/30 font-bold leading-tight">
+                                                                7.9M views • Archive video
+                                                            </p>
+                                                            <p className="text-[9px] text-white/10 uppercase tracking-widest font-mono">
+                                                                {seq.id.slice(-8).toUpperCase()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Bottom App Shortcut Icons */}
+                                        <div className="pt-8 border-t border-white/5 space-y-6">
+                                             <h3 className="text-[10px] font-black uppercase tracking-widest text-white/20">QUICK ACCESS</h3>
+                                             <div className="grid grid-cols-5 gap-3">
+                                                {[
+                                                    { icon: MonitorPlay, color: "bg-blue-600" },
+                                                    { icon: Diamond, color: "bg-gray-800" },
+                                                    { icon: Eye, color: "bg-red-600" },
+                                                    { icon: Instagram, color: "bg-gray-800" },
+                                                    { icon: LayoutGrid, color: "bg-gray-800" }
+                                                ].map((app, i) => (
+                                                    <button
+                                                        key={i}
+                                                        className={cn(
+                                                            "aspect-square rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95",
+                                                            app.color
+                                                        )}
+                                                    >
+                                                        <app.icon className="w-5 h-5 text-white" />
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {nextSequences.slice(0, 4).map((seq, i) => (
-                                        <div
-                                            key={seq.id}
-                                            onClick={() => navigate(`/watch?name=${encodeURIComponent(seq.title)}&id=${seq.id}`)}
-                                            className="flex gap-4 cursor-pointer group"
-                                        >
-                                            <div className="w-40 aspect-[16/9] rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/5 group-hover:border-blue-500/30 transition-all">
-                                                <img src={seq.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
-                                                <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 rounded-md text-[9px] font-bold">
-                                                    {seq.duration ? formatTime(seq.duration) : "0:39"}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 py-1">
-                                                <h4 className="text-[11px] font-black uppercase leading-tight group-hover:text-blue-500 transition-colors line-clamp-2">
-                                                    {(i + 1).toString().padStart(2, '0')} {seq.title.slice(0, 4).toUpperCase()}
-                                                </h4>
-                                                <div className="space-y-1">
-                                                    <p className="text-[9px] text-white/30 font-bold leading-tight line-clamp-2">
-                                                        7.9M views • Archive video
-                                                    </p>
-                                                    <p className="text-[8px] text-white/10 uppercase tracking-widest">
-                                                        {seq.id.slice(-8).toUpperCase()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Bottom App Shortcut Icons */}
-                            <div className="grid grid-cols-5 gap-3">
-                                {[
-                                    { icon: MonitorPlay, color: "bg-blue-600" },
-                                    { icon: Diamond, color: "bg-gray-800" },
-                                    { icon: Eye, color: "bg-red-600" },
-                                    { icon: Instagram, color: "bg-gray-800" },
-                                    { icon: LayoutGrid, color: "bg-gray-800" }
-                                ].map((app, i) => (
-                                    <button
-                                        key={i}
-                                        className={cn(
-                                            "aspect-square rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95",
-                                            app.color
-                                        )}
-                                    >
-                                        <app.icon className="w-5 h-5 text-white" />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </main>
 
