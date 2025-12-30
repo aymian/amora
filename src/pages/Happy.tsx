@@ -24,7 +24,8 @@ import {
     MoreHorizontal,
     MonitorPlay,
     Info,
-    Maximize
+    Maximize,
+    Activity
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { auth, db } from "@/lib/firebase";
@@ -260,151 +261,194 @@ export default function Happy() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute inset-0 bg-black/95 backdrop-blur-[100px]"
+                                className="absolute inset-0 bg-black/98 backdrop-blur-[120px]"
                                 onClick={() => setShowPlayerModal(false)}
                             />
 
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 40 }}
+                                initial={{ opacity: 0, scale: 0.98, y: 20 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 40 }}
-                                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                                className="relative w-full h-full max-w-[1920px] max-h-[1080px] bg-[#050505] lg:rounded-[3rem] overflow-hidden flex flex-col shadow-[0_0_150px_rgba(233,196,154,0.1)] border border-white/5"
+                                exit={{ opacity: 0, scale: 0.98, y: 20 }}
+                                transition={{ type: "spring", damping: 30, stiffness: 200 }}
+                                className="relative w-full h-full lg:h-[92vh] max-w-[1920px] bg-[#050505] lg:rounded-[3.5rem] overflow-hidden flex flex-col shadow-[0_0_200px_rgba(0,0,0,1)] border border-white/5 mx-auto"
                                 onMouseMove={handleMouseMove}
                             >
-                                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
                                     {/* Main Stage (Player) */}
                                     <div className={cn(
-                                        "flex-1 relative bg-black flex items-center justify-center transition-all duration-700",
-                                        isSidebarCollapsed ? "w-full" : "lg:w-[75%]"
+                                        "flex-1 relative bg-black flex items-center justify-center transition-all duration-1000 ease-in-out overflow-hidden uppercase",
+                                        isSidebarCollapsed ? "w-full" : "lg:w-[72%]"
                                     )}>
+                                        <div className="absolute inset-0 opacity-20 blur-[100px] pointer-events-none overflow-hidden scale-150">
+                                            <video src={currentClip.videoUrl} autoPlay muted playsInline loop className="w-full h-full object-cover" />
+                                        </div>
+
                                         <video
                                             ref={videoRef}
                                             src={currentClip.videoUrl}
                                             autoPlay
                                             muted={muted}
                                             playsInline
-                                            className="w-full h-full object-contain"
+                                            className="relative z-10 h-full w-auto max-w-full object-contain"
                                             onTimeUpdate={handleTimeUpdate}
                                             onDurationChange={() => setDuration(videoRef.current?.duration || 0)}
                                             onEnded={handleNext}
                                             onClick={handleTogglePlay}
                                         />
 
-                                        {/* Interaction Overlay */}
+                                        {/* Premium Interaction Overlay */}
                                         <div className={cn(
-                                            "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-500 flex flex-col justify-end p-8 lg:p-12",
-                                            (showControls || !playing) && "opacity-100"
+                                            "absolute inset-0 z-20 flex flex-col justify-between transition-opacity duration-700",
+                                            (showControls || !playing) ? "opacity-100" : "opacity-0"
                                         )}>
-                                            <div className="max-w-6xl mx-auto w-full space-y-8">
-                                                {/* Control Bar */}
+                                            <div className="bg-gradient-to-b from-black/60 to-transparent p-8 flex justify-between items-start">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[9px] uppercase tracking-[0.4em] font-black text-[#e9c49a]/40">Neural Stream</span>
+                                                    <h3 className="text-white/60 text-[10px] font-bold uppercase tracking-widest">{currentClip.title}</h3>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowPlayerModal(false)}
+                                                    className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white transition-all backdrop-blur-3xl group"
+                                                >
+                                                    <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
+                                                </button>
+                                            </div>
+
+                                            <div className="bg-gradient-to-t from-black/90 via-black/40 to-transparent p-12 lg:p-20 space-y-10 group/ui">
+                                                <div className="space-y-4 max-w-5xl translate-y-4 group-hover/ui:translate-y-0 transition-transform duration-700">
+                                                    <div className="flex items-center gap-4">
+                                                        <motion.div
+                                                            animate={{ scale: [1, 1.1, 1] }}
+                                                            transition={{ duration: 2, repeat: Infinity }}
+                                                            className="px-4 py-1.5 bg-[#e9c49a] text-black rounded-full text-[9px] font-black uppercase tracking-[0.2em]"
+                                                        >
+                                                            Resonance Active
+                                                        </motion.div>
+                                                        <div className="h-px w-12 bg-[#e9c49a]/30" />
+                                                        <span className="text-[10px] text-white/30 uppercase font-black tracking-[0.3em]">Cinematic High Frequency</span>
+                                                    </div>
+                                                    <h2 className="text-5xl lg:text-7xl font-display font-light text-white tracking-tight leading-none uppercase lg:ml-[-4px]">
+                                                        {currentClip.title.split(' ').map((word: string, i: number) => (
+                                                            <span key={i} className={cn(i % 2 !== 0 && "text-[#e9c49a] italic font-serif")}>{word} </span>
+                                                        ))}
+                                                    </h2>
+                                                </div>
+
                                                 <div className="space-y-6">
-                                                    {/* Progress Center */}
-                                                    <div className="relative h-1.5 bg-white/10 rounded-full cursor-pointer group/seek" onClick={(e) => {
+                                                    <div className="relative h-1.5 bg-white/5 rounded-full cursor-pointer group/progress overflow-hidden" onClick={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect();
                                                         const x = e.clientX - rect.left;
                                                         const val = x / rect.width;
                                                         if (videoRef.current) videoRef.current.currentTime = val * videoRef.current.duration;
                                                     }}>
                                                         <motion.div
-                                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#e9c49a] rounded-full"
+                                                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#f5d9b8] rounded-full shadow-[0_0_20px_rgba(233,196,154,0.3)]"
                                                             style={{ width: `${played * 100}%` }}
-                                                        />
-                                                        <div
-                                                            className="absolute top-1/2 -ml-2 -mt-2 w-4 h-4 bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)] opacity-0 group-hover/seek:opacity-100 transition-opacity"
-                                                            style={{ left: `${played * 100}%` }}
                                                         />
                                                     </div>
 
                                                     <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-8">
-                                                            <button onClick={handlePrev} className="text-white/20 hover:text-white transition-all"><SkipBack className="w-6 h-6 fill-current" /></button>
-                                                            <button onClick={handleTogglePlay} className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
-                                                                {playing ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+                                                        <div className="flex items-center gap-10">
+                                                            <button onClick={handlePrev} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipBack className="w-5 h-5 fill-current" /></button>
+                                                            <button onClick={handleTogglePlay} className="w-20 h-20 rounded-[2rem] bg-white text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl">
+                                                                {playing ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
                                                             </button>
-                                                            <button onClick={handleNext} className="text-white/20 hover:text-white transition-all"><SkipForward className="w-6 h-6 fill-current" /></button>
+                                                            <button onClick={handleNext} className="text-white/20 hover:text-white transition-all scale-100 hover:scale-120 active:scale-90"><SkipForward className="w-5 h-5 fill-current" /></button>
 
-                                                            <div className="h-8 w-px bg-white/10" />
+                                                            <div className="h-10 w-px bg-white/10 mx-2" />
 
-                                                            <div className="text-[11px] font-bold text-white/40 tracking-[0.2em] font-mono">
-                                                                {formatTime(played * duration)} <span className="mx-2">//</span> {formatTime(duration)}
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Duration Scan</span>
+                                                                <div className="text-[12px] font-bold text-[#e9c49a] tracking-[0.2em] font-mono">
+                                                                    {formatTime(played * duration)} <span className="text-white/20 mx-1">/</span> {formatTime(duration)}
+                                                                </div>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-6">
-                                                            <button onClick={() => setMuted(!muted)} className="text-white/40 hover:text-white transition-all">
-                                                                {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                                                            </button>
-                                                            <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={cn("text-white/40 hover:text-[#e9c49a] transition-all", !isSidebarCollapsed && "text-[#e9c49a]")}>
-                                                                <Layers className="w-5 h-5" />
+                                                        <div className="flex items-center gap-8">
+                                                            <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-2xl border border-white/5">
+                                                                <button onClick={() => setMuted(!muted)} className="text-white/40 hover:text-white transition-all">
+                                                                    {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                                                                </button>
+                                                                <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-white/40" style={{ width: muted ? '0%' : '80%' }} />
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                                                className={cn("p-4 rounded-2xl transition-all", !isSidebarCollapsed ? "bg-[#e9c49a] text-black" : "bg-white/5 text-white/40 hover:text-white")}
+                                                            >
+                                                                <LayoutGrid className="w-5 h-5" />
                                                             </button>
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                {/* Meta Info */}
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="px-4 py-1.5 bg-[#e9c49a] text-black rounded-full text-[9px] font-black uppercase tracking-widest">Resonance Active</div>
-                                                        <div className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">Cinematic Synchrony v.04</div>
-                                                    </div>
-                                                    <h2 className="text-5xl lg:text-7xl font-display font-light text-white tracking-tight leading-none uppercase">{currentClip.title}</h2>
-                                                </div>
                                             </div>
                                         </div>
-
-                                        {/* Modal Termination */}
-                                        <button
-                                            onClick={() => setShowPlayerModal(false)}
-                                            className="absolute top-8 right-8 p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white/40 hover:text-white transition-all hover:bg-white/10 z-[120]"
-                                        >
-                                            <X className="w-6 h-6" />
-                                        </button>
                                     </div>
 
-                                    {/* Sync Sidebar */}
+                                    {/* Premium Sidebar */}
                                     <AnimatePresence>
                                         {!isSidebarCollapsed && (
                                             <motion.div
-                                                initial={{ width: 0, opacity: 0 }}
-                                                animate={{ width: "350px", opacity: 1 }}
-                                                exit={{ width: 0, opacity: 0 }}
-                                                className="hidden lg:flex flex-col border-l border-white/5 bg-black overflow-hidden"
+                                                initial={{ width: 0, opacity: 0, x: 100 }}
+                                                animate={{ width: "400px", opacity: 1, x: 0 }}
+                                                exit={{ width: 0, opacity: 0, x: 100 }}
+                                                className="hidden lg:flex flex-col border-l border-white/5 bg-[#080808] overflow-hidden z-30"
                                             >
-                                                <div className="p-10 space-y-10 h-full overflow-y-auto custom-scrollbar">
-                                                    <div className="space-y-2">
-                                                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#e9c49a]">Next Resonance</h3>
-                                                        <p className="text-[9px] text-white/20 uppercase font-bold tracking-[0.2em]">Atmospheric Queued Sequence</p>
+                                                <div className="p-10 space-y-12 h-full overflow-y-auto custom-scrollbar bg-gradient-to-b from-transparent to-black/40">
+                                                    <div className="space-y-4">
+                                                        <div className="w-12 h-1 bg-[#e9c49a] rounded-full" />
+                                                        <div className="space-y-1">
+                                                            <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-[#e9c49a]">Next Resonance</h3>
+                                                            <p className="text-[9px] text-white/20 uppercase font-bold tracking-[0.2em]">Atmospheric Cloud Registry</p>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="space-y-8">
+                                                    <div className="space-y-6">
                                                         {happyClips.map((clip, i) => (
-                                                            <div
+                                                            <motion.div
                                                                 key={clip.id}
+                                                                initial={{ opacity: 0, x: 20 }}
+                                                                animate={{ opacity: 1, x: 0 }}
+                                                                transition={{ delay: i * 0.1 }}
                                                                 onClick={() => setCurrentClip(clip)}
                                                                 className={cn(
-                                                                    "flex gap-5 cursor-pointer group transition-all",
-                                                                    currentClip.id === clip.id && "bg-white/[0.03] p-4 rounded-3xl -mx-4"
+                                                                    "flex items-center gap-6 cursor-pointer group transition-all relative p-5 rounded-[2rem] border overflow-hidden",
+                                                                    currentClip.id === clip.id
+                                                                        ? "bg-[#e9c49a]/5 border-[#e9c49a]/20"
+                                                                        : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
                                                                 )}
                                                             >
-                                                                <div className="w-24 aspect-video rounded-xl overflow-hidden relative flex-shrink-0 border border-white/5">
-                                                                    <img src={clip.imageUrl || clip.videoUrl?.replace(/\.[^/.]+$/, ".jpg")} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                                                                <div className="w-28 aspect-[16/10] rounded-2xl overflow-hidden relative flex-shrink-0 border border-white/5">
+                                                                    <img src={clip.imageUrl || clip.videoUrl?.replace(/\.[^/.]+$/, ".jpg")} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt="" />
                                                                     {currentClip.id === clip.id && (
-                                                                        <div className="absolute inset-0 bg-[#e9c49a]/40 flex items-center justify-center">
-                                                                            <Play className="w-4 h-4 text-black fill-current" />
+                                                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
+                                                                            <motion.div
+                                                                                animate={{ scale: [1, 1.2, 1] }}
+                                                                                transition={{ duration: 1.5, repeat: Infinity }}
+                                                                                className="w-8 h-8 rounded-full bg-[#e9c49a] flex items-center justify-center text-black"
+                                                                            >
+                                                                                <div className="flex gap-0.5">
+                                                                                    {[1, 2, 3].map(bar => <div key={bar} className="w-0.5 h-3 bg-black animate-pulse" />)}
+                                                                                </div>
+                                                                            </motion.div>
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                <div className="flex-1 space-y-1 min-w-0">
+                                                                <div className="flex-1 space-y-2 min-w-0">
                                                                     <h4 className={cn(
-                                                                        "text-[10px] uppercase font-bold tracking-widest truncate transition-colors",
+                                                                        "text-[10px] uppercase font-black tracking-[0.2em] truncate transition-colors",
                                                                         currentClip.id === clip.id ? "text-[#e9c49a]" : "text-white/60 group-hover:text-white"
                                                                     )}>
                                                                         {clip.title}
                                                                     </h4>
-                                                                    <p className="text-[8px] text-white/20 uppercase font-black tracking-widest">{clip.duration ? formatTime(clip.duration) : "verified"}</p>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[8px] text-white/20 uppercase font-black tracking-widest">{clip.duration ? formatTime(clip.duration) : "4K CINEMA"}</span>
+                                                                        {currentClip.id === clip.id && <Sparkles className="w-3 h-3 text-[#e9c49a]" />}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
+                                                            </motion.div>
                                                         ))}
                                                     </div>
                                                 </div>

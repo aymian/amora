@@ -34,6 +34,7 @@ interface Artifact {
     publicId?: string;
     type: 'image' | 'video';
     createdAt: any;
+    sourceCollection?: string;
 }
 
 export default function Contents() {
@@ -54,31 +55,41 @@ export default function Contents() {
             // 1. Fetch Archives without strict orderBy to avoid index requirement failures
             const imagesSnap = await getDocs(query(collection(db, "gallery_images")));
             const videosSnap = await getDocs(query(collection(db, "gallery_videos")));
+            const happySnap = await getDocs(query(collection(db, "happy_tracks")));
 
             const images = imagesSnap.docs.map(doc => ({
                 ...doc.data(),
-                id: doc.id, // Actual Firestore Document ID for deletion
-                type: 'image'
+                id: doc.id,
+                type: 'image',
+                sourceCollection: 'gallery_images'
             })) as Artifact[];
 
             let videos = videosSnap.docs.map(doc => ({
                 ...doc.data(),
-                id: doc.id, // Actual Firestore Document ID for deletion
-                type: 'video'
+                id: doc.id,
+                type: 'video',
+                sourceCollection: 'gallery_videos'
             })) as Artifact[];
 
-            // 2. Hero Fallback: If no videos in Archive, pull the current global hero
+            const happyTracks = happySnap.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id,
+                type: 'video',
+                sourceCollection: 'happy_tracks'
+            })) as Artifact[];
+
+            // 2. Hero Fallback: If no archive videos, pull global hero
             if (videos.length === 0) {
                 const heroDoc = await getDoc(doc(db, "site_content", "hero"));
                 if (heroDoc.exists()) {
                     const data = heroDoc.data();
                     videos = [{
-                        ...data, // Spread existing data first
-                        id: "hero", // Special ID to identify the site_content doc
+                        ...data,
+                        id: "hero",
                         title: data.title || "Current Hero",
                         description: data.description || "Active sequence",
                         videoUrl: data.videoUrl,
-                        publicId: data.publicId, // Ensure publicId is included
+                        publicId: data.publicId,
                         imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : undefined),
                         type: 'video',
                         createdAt: data.updatedAt ? { seconds: new Date(data.updatedAt).getTime() / 1000 } : null
@@ -87,7 +98,7 @@ export default function Contents() {
             }
 
             // 3. Resilient Client-side Sort
-            const all = [...images, ...videos].sort((a, b) => {
+            const all = [...images, ...videos, ...happyTracks].sort((a, b) => {
                 const dateA = a.createdAt?.seconds || 0;
                 const dateB = b.createdAt?.seconds || 0;
                 return dateB - dateA;
@@ -101,6 +112,7 @@ export default function Contents() {
             setLoading(false);
         }
     };
+
 
     const handleDelete = async (artifact: Artifact) => {
         if (!window.confirm(`Are you sure you want to de-index ${artifact.title.toLowerCase()}? This will permanently remove it from the cloud and database.`)) return;
@@ -162,7 +174,7 @@ export default function Contents() {
                 // If it's the site_content hero doc
                 await deleteDoc(doc(db, "site_content", "hero"));
             } else {
-                const collectionName = artifact.type === 'image' ? 'gallery_images' : 'gallery_videos';
+                const collectionName = artifact.sourceCollection || (artifact.type === 'image' ? 'gallery_images' : 'gallery_videos');
                 await deleteDoc(doc(db, collectionName, artifact.id));
 
                 // Also check if this artifact is currently set as the hero by checking ID parity
