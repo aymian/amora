@@ -544,7 +544,7 @@ export default function MoodsUpload() {
                             <div className="absolute bottom-10 left-8 right-8 space-y-4">
                                 <div className="flex flex-wrap gap-1.5">
                                     {selectedMoods.length > 0 ? selectedMoods.map(m => (
-                                        <span key={m} className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase tracking-widest border border-blue-500/30">
+                                        <span key={m} className="px-2 py-0.5 rounded-full bg-[#e9c49a]/20 text-[#e9c49a] text-[8px] font-black uppercase tracking-widest border border-[#e9c49a]/30">
                                             {m}
                                         </span>
                                     )) : (

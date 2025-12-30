@@ -22,7 +22,6 @@ const HappyUpload = () => {
     const [loading, setLoading] = useState(false);
     const [videoFile, setVideoFile] = useState<File | null>(null);
     const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
@@ -39,8 +38,8 @@ const HappyUpload = () => {
 
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!videoFile || !title || !description) {
-            toast.error('Please fill in all fields and select a cinematic clip.');
+        if (!videoFile || !title) {
+            toast.error('Please provide a title and select a cinematic clip.');
             return;
         }
 
@@ -53,7 +52,7 @@ const HappyUpload = () => {
             const timestamp = Math.round(new Date().getTime() / 1000);
 
             const paramsToSign = {
-                folder: 'amora_happy_clips',
+                folder: 'amora_happy_tracks',
                 timestamp: timestamp
             };
 
@@ -71,7 +70,7 @@ const HappyUpload = () => {
             formData.append('api_key', apiKey);
             formData.append('timestamp', timestamp.toString());
             formData.append('signature', signature);
-            formData.append('folder', 'amora_happy_clips');
+            formData.append('folder', 'amora_happy_tracks');
 
             // 2. Transmit to Cloudinary (auto-detects video)
             const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
@@ -95,7 +94,6 @@ const HappyUpload = () => {
             await setDoc(doc(db, "happy_tracks", assetId), {
                 id: assetId,
                 title,
-                description,
                 videoUrl,
                 imageUrl: thumbnailUrl,
                 publicId: result.public_id,
@@ -162,18 +160,6 @@ const HappyUpload = () => {
                             </div>
                         </div>
 
-                        <div className="relative group/input">
-                            <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] ml-1 mb-2 block font-bold">Narrative Context</label>
-                            <div className="relative">
-                                <FileText className="absolute left-4 top-6 w-4 h-4 text-white/10 group-focus-within/input:text-orange-400 transition-colors" />
-                                <textarea
-                                    placeholder="Describe the euphoric visual..."
-                                    className="w-full bg-white/5 border border-white/5 rounded-3xl py-4 pl-12 pr-6 text-white text-sm focus:outline-none focus:border-orange-400/40 focus:bg-white/[0.08] transition-all h-32 resize-none"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                />
-                            </div>
-                        </div>
 
                         <div className="space-y-2">
                             <label className="text-[10px] text-white/20 uppercase tracking-[0.2em] ml-1 mb-2 block font-bold">Video Clip (MP4)</label>
