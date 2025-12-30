@@ -366,7 +366,7 @@ export default function Contents() {
                                     {/* Actions Overlay */}
                                     <div className="absolute bottom-8 left-8 right-8 flex items-center justify-between opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                                         <button
-                                            onClick={() => art.type === 'video' ? navigate(`/watch?id=${art.id}`) : navigate(`/images`)}
+                                            onClick={() => art.type === 'video' ? navigate(`/watch?name=${encodeURIComponent(art.title)}&id=${art.id}`) : navigate(`/images`)}
                                             className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white text-black hover:bg-[#e9c49a] transition-all shadow-xl"
                                         >
                                             <Eye className="w-5 h-5" />

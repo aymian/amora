@@ -262,6 +262,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                 const fetchPromises: Promise<any>[] = [
                     getDocs(query(collection(db, "gallery_images"), limit(20))),
                     getDocs(query(collection(db, "gallery_videos"), limit(20))),
+                    getDocs(query(collection(db, "shorts"), limit(20))),
+                    getDocs(query(collection(db, "happy_tracks"), limit(20))),
+                    getDocs(query(collection(db, "sad_tracks"), limit(20))),
                     getDoc(doc(db, "site_content", "hero"))
                 ];
 
@@ -272,15 +275,18 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
                 const responses = await Promise.all(fetchPromises);
 
-                const images = responses[0].docs.map((doc: any) => ({ id: doc.id, ...doc.data(), type: 'image', title: doc.data().title || 'Untitled' }));
-                const videos = responses[1].docs.map((doc: any) => ({ id: doc.id, ...doc.data(), type: 'video', title: doc.data().title || 'Untitled' }));
+                const images = responses[0].docs.map((doc: any) => ({ ...doc.data(), id: doc.data().id || doc.id, type: 'image', title: doc.data().title || 'Untitled' }));
+                const videos = responses[1].docs.map((doc: any) => ({ ...doc.data(), id: doc.data().id || doc.id, type: 'video', title: doc.data().title || 'Untitled' }));
+                const shorts = responses[2].docs.map((doc: any) => ({ ...doc.data(), id: doc.data().id || doc.id, type: 'video', title: doc.data().title || 'Untitled' }));
+                const happy = responses[3].docs.map((doc: any) => ({ ...doc.data(), id: doc.data().id || doc.id, type: 'video', title: doc.data().title || 'Untitled' }));
+                const sad = responses[4].docs.map((doc: any) => ({ ...doc.data(), id: doc.data().id || doc.id, type: 'video', title: doc.data().title || 'Untitled' }));
 
                 let hero: any[] = [];
-                if (responses[2].exists()) {
-                    const data = responses[2].data();
+                if (responses[5].exists()) {
+                    const data = responses[5].data();
                     hero = [{
-                        id: data.id || "main-hero",
                         ...data,
+                        id: data.id || "main-hero",
                         type: 'video',
                         title: data.title || 'Featured Hero',
                         imageUrl: data.imageUrl || (data.videoUrl ? data.videoUrl.replace(/\.[^/.]+$/, ".jpg") : undefined)
@@ -288,16 +294,16 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                 }
 
                 let users: any[] = [];
-                if (isAdvanced && responses[3]) {
-                    users = responses[3].docs.map((doc: any) => ({
-                        id: doc.id,
+                if (isAdvanced && responses[6]) {
+                    users = responses[6].docs.map((doc: any) => ({
                         ...doc.data(),
+                        id: doc.id,
                         type: 'user',
                         title: doc.data().fullName || doc.data().email
                     }));
                 }
 
-                setAllArtifacts([...users, ...images, ...videos, ...hero]);
+                setAllArtifacts([...users, ...images, ...videos, ...shorts, ...happy, ...sad, ...hero]);
             }
         };
         fetchIndex();
@@ -459,7 +465,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
                             { icon: Video, label: "Short-videos", path: "/short-videos" },
                             { icon: Film, label: "Manage Stories", path: "/manager/contents" },
-                            { icon: Sun, label: "Happy Lab", path: "/happy-upload" },
+                            { icon: Film, label: "Happy Lab", path: "/happy-upload" },
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
                             { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },
@@ -549,7 +555,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                                                         setIsSearchOpen(false);
                                                         setSearchQuery("");
                                                         if (item.type === 'video') {
-                                                            navigate(`/watch?id=${item.id}`);
+                                                            navigate(`/watch?name=${encodeURIComponent(item.title)}&id=${item.id}`);
                                                         } else if (item.type === 'user') {
                                                             navigate(`/user-profile/${item.id}`);
                                                         } else {

@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -193,7 +193,9 @@ export default function MoodsUpload() {
             setProgress(80);
 
             // 3. Save to Firestore
-            await addDoc(collection(db, "mood_content"), {
+            const assetId = `mood-${Math.random().toString(36).substr(2, 9)}`;
+            await setDoc(doc(db, "mood_content", assetId), {
+                id: assetId,
                 title,
                 description,
                 videoUrl,

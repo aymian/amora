@@ -183,7 +183,8 @@ export default function Dashboard() {
                             <Button
                                 onClick={() => {
                                     const videoId = heroData?.id || 'main-hero';
-                                    navigate(`/watch?id=${videoId}`);
+                                    const videoName = heroData?.title || 'featured_sequence';
+                                    navigate(`/watch?name=${encodeURIComponent(videoName)}&id=${videoId}`);
                                 }}
                                 className="h-12 px-8 rounded-full bg-white text-black hover:bg-[#e9c49a] hover:text-black transition-all duration-500 font-bold group shadow-xl text-xs uppercase tracking-widest"
                             >
@@ -250,7 +251,7 @@ export default function Dashboard() {
                         newReleases.map((item) => (
                             <div
                                 key={item.id}
-                                onClick={() => navigate(`/watch?id=${item.id}`)}
+                                onClick={() => navigate(`/watch?name=${encodeURIComponent(item.title)}&id=${item.id}`)}
                                 className="relative aspect-square rounded-[40px] overflow-hidden group cursor-pointer border border-white/5 hover:border-[#e9c49a]/30 transition-all duration-700 bg-[#0A0A0A]"
                             >
                                 <img

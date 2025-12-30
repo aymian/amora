@@ -139,7 +139,7 @@ const AdminNexus = () => {
         { id: 'image-upload', icon: ImageIcon, label: 'Visual Lab', path: '/manager/image-upload' },
         { id: 'create-short', icon: Video, label: 'Create Short', path: '/create-short' },
         { id: 'moods-upload', icon: Heart, label: 'Mood Architecture', path: '/moods-uploads' },
-        { id: 'happy-upload', icon: Sun, label: 'Happy Lab', path: '/happy-upload' },
+        { id: 'happy-upload', icon: Film, label: 'Happy Lab', path: '/happy-upload' },
         { id: 'content', icon: Flame, label: 'Contents', path: '/manager/contents' },
         { id: 'users', icon: Users, label: 'Citizens' },
         { id: 'analytics', icon: Activity, label: 'System Pulse' },

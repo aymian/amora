@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, Film, Type, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +97,9 @@ export default function CreateShort() {
             setUploadProgress(70);
 
             // Save to Firestore
-            await addDoc(collection(db, "shorts"), {
+            const assetId = `short-${Math.random().toString(36).substr(2, 9)}`;
+            await setDoc(doc(db, "shorts", assetId), {
+                id: assetId,
                 title,
                 description: description.trim() || "",
                 videoUrl,

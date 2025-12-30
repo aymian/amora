@@ -93,28 +93,23 @@ const MediaUpload = () => {
             const assetId = `amora-${Math.random().toString(36).substr(2, 9)}`;
 
             // 4. Save metadata to Firestore (as the global hero video)
-            await setDoc(doc(db, "site_content", "hero"), {
+            const heroData = {
                 id: assetId,
                 videoUrl: videoUrl,
                 publicId: result.public_id,
+                imageUrl: videoUrl.replace(/\.[^/.]+$/, ".jpg"),
                 title,
                 description,
                 updatedAt: new Date().toISOString(),
-                provider: 'cloudinary'
-            });
-
-            // 5. Also register in the Gallery Archive (for the Contents manager)
-            await addDoc(collection(db, "gallery_videos"), {
-                id: assetId,
-                videoUrl: videoUrl,
-                publicId: result.public_id,
-                imageUrl: videoUrl.replace(/\.[^/.]+$/, ".jpg"), // Cloudinary auto-thumbnail trick
-                title,
-                description,
                 createdAt: serverTimestamp(),
                 type: 'video',
                 provider: 'cloudinary'
-            });
+            };
+
+            await setDoc(doc(db, "site_content", "hero"), heroData);
+
+            // 5. Also register in the Gallery Archive (for the Contents manager) using assetId as doc ID
+            await setDoc(doc(db, "gallery_videos", assetId), heroData);
 
             toast.success('Hero Cinema updated successfully via Cloudinary');
             navigate('/manager/nexus');

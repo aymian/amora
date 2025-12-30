@@ -396,7 +396,7 @@ export default function UserProfile() {
                                     userVideos.map((video) => (
                                         <div
                                             key={video.id}
-                                            onClick={() => navigate(`/watch?id=${video.id}`)}
+                                            onClick={() => navigate(`/watch?name=${encodeURIComponent(video.title)}&id=${video.id}`)}
                                             className="group relative aspect-video rounded-[2rem] overflow-hidden bg-black border border-white/5 hover:border-[#e9c49a]/30 transition-all cursor-pointer shadow-xl"
                                         >
                                             <img src={video.imageUrl} className="w-full h-full object-cover grayscale-50 group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" alt="" />
