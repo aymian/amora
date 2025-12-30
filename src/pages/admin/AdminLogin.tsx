@@ -12,7 +12,7 @@ const AdminLogin = () => {
     const handleEntry = (e: React.FormEvent) => {
         e.preventDefault();
         // THE MASTER KEY
-        if (form.user === 'amora2050' && form.pass === 'yves') {
+        if (form.user === 'amora2050' && form.pass === 'yves2050') {
             setStatus('authorized');
             localStorage.setItem('amora_admin_token', 'session_active_2050');
             toast.success('Nexus Session Initialized');

@@ -56,6 +56,7 @@ export default function Contents() {
             const imagesSnap = await getDocs(query(collection(db, "gallery_images")));
             const videosSnap = await getDocs(query(collection(db, "gallery_videos")));
             const happySnap = await getDocs(query(collection(db, "happy_tracks")));
+            const shortsSnap = await getDocs(query(collection(db, "shorts")));
 
             const images = imagesSnap.docs.map(doc => ({
                 ...doc.data(),
@@ -78,6 +79,15 @@ export default function Contents() {
                 sourceCollection: 'happy_tracks'
             })) as Artifact[];
 
+            const shorts = shortsSnap.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id,
+                type: 'video',
+                sourceCollection: 'shorts',
+                // Use video thumbnail or placeholder if no image
+                imageUrl: doc.data().videoUrl ? doc.data().videoUrl.replace(/\.[^/.]+$/, ".jpg") : undefined
+            })) as Artifact[];
+
             // 2. Hero Fallback: If no archive videos, pull global hero
             if (videos.length === 0) {
                 const heroDoc = await getDoc(doc(db, "site_content", "hero"));
@@ -98,7 +108,7 @@ export default function Contents() {
             }
 
             // 3. Resilient Client-side Sort
-            const all = [...images, ...videos, ...happyTracks].sort((a, b) => {
+            const all = [...images, ...videos, ...happyTracks, ...shorts].sort((a, b) => {
                 const dateA = a.createdAt?.seconds || 0;
                 const dateB = b.createdAt?.seconds || 0;
                 return dateB - dateA;
@@ -134,8 +144,8 @@ export default function Contents() {
                     const parts = url.split('/');
                     const filename = parts[parts.length - 1].split('.')[0];
                     const folder = parts[parts.length - 2];
-                    // Common folders: amora_cinematics, amora_gallery
-                    if (folder === 'amora_cinematics' || folder === 'amora_gallery') {
+                    // Common folders: amora_cinematics, amora_gallery, amora_shorts
+                    if (folder === 'amora_cinematics' || folder === 'amora_gallery' || folder === 'amora_shorts') {
                         publicId = `${folder}/${filename}`;
                     } else {
                         publicId = filename;
@@ -159,7 +169,10 @@ export default function Contents() {
                 formData.append('timestamp', timestamp.toString());
                 formData.append('signature', signature);
 
-                const cldResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${artifact.type}/destroy`, {
+                // Determine resource type based on artifact type
+                const resourceType = artifact.type === 'image' ? 'image' : 'video';
+
+                const cldResponse = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
                     method: 'POST',
                     body: formData
                 });
