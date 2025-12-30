@@ -130,31 +130,35 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
         }
     }, [user]);
 
-    // Internal resonance check for persistence recovery
+    // Internal resonance check for persistence recovery and real-time sync
     useEffect(() => {
-        if (localUser) return;
+        let unsubSnapshot: (() => void) | undefined;
 
         const unsubAuth = auth.onAuthStateChanged(async (authUser) => {
             if (authUser) {
-                try {
-                    const userDoc = await getDoc(doc(db, "users", authUser.uid));
+                // Set up real-time listener for the user's document
+                unsubSnapshot = onSnapshot(doc(db, "users", authUser.uid), (userDoc) => {
                     if (userDoc.exists()) {
                         setLocalUser({ id: authUser.uid, ...userDoc.data() });
                     } else {
                         setLocalUser({ id: authUser.uid, plan: "free" });
                     }
-                } catch (err) {
-                    console.error("Resonance recovery failed:", err);
-                }
-            } else if (!user) {
-                // If definitely not logged in, we might want to stay in loading or redirect
-                // But usually the parent handles navigation
+                    setLocalLoading(false);
+                }, (err) => {
+                    console.error("User resonance sync failed:", err);
+                    setLocalLoading(false);
+                });
+            } else {
+                setLocalLoading(false);
+                if (unsubSnapshot) unsubSnapshot();
             }
-            setLocalLoading(false);
         });
 
-        return () => unsubAuth();
-    }, [localUser, user]);
+        return () => {
+            unsubAuth();
+            if (unsubSnapshot) unsubSnapshot();
+        };
+    }, []);
 
     useEffect(() => {
         if (!localUser?.id) return;
