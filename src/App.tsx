@@ -37,6 +37,8 @@ import WorkerLogin from "./pages/workers/WorkerLogin";
 import WorkerSignup from "./pages/workers/WorkerSignup";
 import RoleSelection from "./pages/workers/RoleSelection";
 import WorkerDashboard from "./pages/workers/WorkerDashboard";
+import WorkersControlCenter from "./pages/admin/workers/WorkersControlCenter";
+import WorkerProfile from "./pages/admin/workers/WorkerProfile";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +57,8 @@ const App = () => (
           <Route path="/video-player" element={<VideoPlayer />} />
           <Route path="/manager" element={<AdminLogin />} />
           <Route path="/manager/nexus" element={<AdminNexus />} />
+          <Route path="/admin/nexus/workers" element={<WorkersControlCenter />} />
+          <Route path="/admin/nexus/workers/:id" element={<WorkerProfile />} />
           <Route path="/manager/upload" element={<MediaUpload />} />
           <Route path="/manager/contents" element={<Contents />} />
           <Route path="/manager/image-upload" element={<ImageUpload />} />
