@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, doc, updateDoc, increment, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
     Sparkles,
     Image as ImageIcon,
@@ -19,9 +19,27 @@ import {
     ArrowUpRight,
     LucideIcon,
     Activity,
-    Command
+    Command,
+    Shield,
+    Zap,
+    Lock,
+    Globe,
+    Palette,
+    Layers,
+    Clock,
+    User,
+    ChevronLeft,
+    ChevronRight,
+    Camera,
+    Sun,
+    Trash2,
+    Eye,
+    Tag,
+    Award,
+    FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
 
 export default function Gallery() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -34,15 +52,18 @@ export default function Gallery() {
     const [searchQuery, setSearchQuery] = useState(urlSearch);
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [userLikes, setUserLikes] = useState<string[]>([]);
     const searchRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             if (user) {
-                const { doc, getDoc } = await import("firebase/firestore");
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 if (userDoc.exists()) {
-                    setUserData({ id: user.uid, ...userDoc.data() });
+                    const data = userDoc.data();
+                    setUserData({ id: user.uid, ...data });
+                    setUserLikes(data.likedGalleryImages || []);
                 }
             }
         });
@@ -131,6 +152,81 @@ export default function Gallery() {
         img.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         img.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handleDownload = async (imageUrl: string, title: string) => {
+        try {
+            toast.info("Initializing artifact download...");
+            const response = await fetch(imageUrl);
+            const blob = await response.json ? await response.blob() : await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${title.toLowerCase().replace(/\s+/g, '_')}_amora.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success("Artifact synchronized to local storage");
+        } catch (error) {
+            console.error("Download failed:", error);
+            // Fallback
+            window.open(imageUrl, '_blank');
+        }
+    };
+
+    const handleShare = async (image: any) => {
+        const shareData = {
+            title: `Amora Architecture: ${image.title}`,
+            text: image.description || "Check out this visual artifact from Amora.",
+            url: window.location.href + `?search=${encodeURIComponent(image.title)}`
+        };
+
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+                toast.success("Transmission successful");
+            } else {
+                await navigator.clipboard.writeText(shareData.url);
+                toast.success("Nexus link copied to clipboard");
+            }
+        } catch (err) {
+            console.error("Share failed:", err);
+        }
+    };
+
+    const handleLike = async (image: any) => {
+        if (!userData) {
+            toast.error("Auth required for resonance");
+            return;
+        }
+
+        const isLiked = userLikes.includes(image.id);
+        const newLikes = isLiked
+            ? userLikes.filter(id => id !== image.id)
+            : [...userLikes, image.id];
+
+        setUserLikes(newLikes);
+
+        try {
+            const imageRef = doc(db, "gallery_images", image.id);
+            const userRef = doc(db, "users", userData.id);
+
+            await Promise.all([
+                updateDoc(imageRef, {
+                    "stats.reactions": increment(isLiked ? -1 : 1)
+                }),
+                updateDoc(userRef, {
+                    likedGalleryImages: isLiked ? arrayRemove(image.id) : arrayUnion(image.id)
+                })
+            ]);
+
+            toast.success(isLiked ? "Resonance severed" : "Resonance established");
+        } catch (error) {
+            console.error("Like failed:", error);
+            // Rollback
+            setUserLikes(userLikes);
+        }
+    };
 
     return (
         <DashboardLayout user={userData}>
@@ -373,120 +469,207 @@ export default function Gallery() {
                 )}
             </div>
 
-            {/* Lightbox - Side-by-Side Cinematic Control Panel */}
+            {/* Lightbox - High-Fidelity Cinematic Intel Portal */}
             <AnimatePresence>
                 {selectedImage && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505]/95 backdrop-blur-[60px] p-4 md:p-8"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505]/98 backdrop-blur-[80px] p-0 md:p-10"
                         onClick={() => setSelectedImage(null)}
                     >
-                        {/* Ambient Background Glow */}
-                        <div className="absolute inset-0 opacity-10 pointer-events-none">
-                            <img src={selectedImage.imageUrl} className="w-full h-full object-cover blur-[150px]" alt="" />
+                        {/* Dynamic Background Aura */}
+                        <div className="absolute inset-0 opacity-20 pointer-events-none">
+                            <img src={selectedImage.imageUrl} className="w-full h-full object-cover blur-[200px] scale-125" alt="" />
                         </div>
 
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                            initial={{ scale: 0.95, opacity: 0, y: 30 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 30 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="relative flex flex-col md:flex-row items-stretch rounded-[4rem] overflow-hidden bg-black/40 border border-white/10 shadow-[0_100px_200px_-50px_rgba(0,0,0,1)] max-h-[90vh] max-w-[95vw]"
+                            className="relative w-full max-w-[1400px] aspect-video md:h-[85vh] flex flex-col md:flex-row items-stretch rounded-none md:rounded-[4rem] overflow-hidden bg-[#0a0a0a] border-none md:border md:border-white/10 shadow-[0_100px_200px_-50px_rgba(0,0,0,1)]"
                         >
-                            {/* Left: Artifact Viewport (Vertical 9:16) */}
-                            <div className="aspect-[9/16] h-[50vh] md:h-[80vh] relative overflow-hidden group/view bg-black">
+                            {/* Left: Artifact Viewport */}
+                            <div className="flex-1 relative overflow-hidden bg-black flex items-center justify-center group/artifact">
                                 <img
                                     src={selectedImage.imageUrl}
                                     alt={selectedImage.title}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                 />
 
-                                {/* Top Badges over image */}
-                                <div className="absolute top-8 left-8 flex items-center gap-3">
-                                    <div className="px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-3xl border border-white/10 flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#e9c49a] animate-pulse" />
-                                        <span className="text-[9px] uppercase tracking-[0.2em] font-bold text-white/70">Verified Artifact</span>
+                                {/* Image Overlay Badges */}
+                                <div className="absolute top-10 left-10 flex flex-col gap-3">
+                                    <div className="px-4 py-2 rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/10 flex items-center gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/80">Active Resonance</span>
                                     </div>
+                                    {selectedImage.is18Plus && (
+                                        <div className="px-4 py-2 rounded-2xl bg-red-500/20 backdrop-blur-3xl border border-red-500/30">
+                                            <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-red-500">18+ Restricted</span>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <button
-                                    onClick={() => setSelectedImage(null)}
-                                    className="absolute top-8 right-8 z-[110] w-12 h-12 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 flex items-center justify-center text-white/40 hover:text-white md:hidden"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                                {/* Plan Badge */}
+                                <div className="absolute bottom-10 left-10 flex items-center gap-3">
+                                    <div className="px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-3xl border border-white/10 flex items-center gap-3">
+                                        <Award className="w-4 h-4 text-[#e9c49a]" />
+                                        <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/50">
+                                            {selectedImage.planVisibility?.[0] || 'Free'} PROTOCOL
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Right: Directorial Intelligence Panel */}
-                            <div className="w-full md:w-[450px] p-10 md:p-14 bg-[#070707] flex flex-col justify-between border-t md:border-t-0 md:border-l border-white/5 relative">
+                            {/* Right: Directorial Intel Panel */}
+                            <div className="w-full md:w-[500px] bg-[#070707] flex flex-col p-10 md:p-14 border-t md:border-t-0 md:border-l border-white/5 overflow-y-auto custom-scrollbar relative">
+                                {/* Close Button */}
                                 <button
                                     onClick={() => setSelectedImage(null)}
-                                    className="absolute top-10 right-10 z-[110] w-12 h-12 rounded-full bg-white/5 border border-white/10 hidden md:flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all active:scale-90"
+                                    className="absolute top-10 right-10 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all z-20 group"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
                                 </button>
 
-                                <div className="space-y-12">
+                                <div className="space-y-12 pb-10">
+                                    {/* Header Section */}
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-[#e9c49a]/40">Indexing Protocol</span>
-                                            <div className="flex-1 h-[1px] bg-white/5" />
+                                        <div className="flex items-center gap-4">
+                                            <Tag className="w-4 h-4 text-[#e9c49a]/40" />
+                                            <span className="text-[10px] uppercase tracking-[0.5em] font-bold text-white/20">Artifact Identification</span>
                                         </div>
-
-                                        <div className="space-y-3">
-                                            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight">
-                                                {selectedImage.title.toLowerCase().replace(/\s+/g, '_')}.artifact
+                                        <div className="space-y-2">
+                                            <h2 className="text-4xl md:text-5xl font-display font-light text-white leading-tight lowercase">
+                                                {selectedImage.title.replace(/\s+/g, '_')}.<span className="text-[#e9c49a] italic">artifact</span>
                                             </h2>
-                                            <div className="flex items-center gap-8 py-2">
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-[9px] uppercase tracking-widest text-white/20 font-bold">Resonance</span>
-                                                    <div className="flex items-center gap-2 text-white/60 text-xs font-light">
-                                                        <Activity className="w-3.5 h-3.5" /> High Alpha
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="text-[9px] uppercase tracking-widest text-white/20 font-bold">Session ID</span>
-                                                    <div className="flex items-center gap-2 text-white/30 text-xs font-mono">
-                                                        #{selectedImage.id.slice(-6).toUpperCase()}
-                                                    </div>
-                                                </div>
+                                            <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest text-[#e9c49a] font-bold">
+                                                <Sparkles className="w-3.5 h-3.5" /> {selectedImage.category || 'General'}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <span className="text-[10px] uppercase tracking-[0.4em] text-[#e9c49a] font-bold flex items-center gap-3">
-                                            Narrative Log
-                                        </span>
-                                        <p className="text-white/50 text-base md:text-lg font-light italic leading-relaxed font-serif">
-                                            "{selectedImage.description}"
-                                        </p>
+                                    {/* Mood & Energy Section */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1 h-px bg-white/5" />
+                                            <span className="text-[9px] uppercase tracking-[0.3em] font-bold text-white/20">Emotional Core</span>
+                                            <div className="flex-1 h-px bg-white/5" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-3">
+                                                <label className="text-[9px] uppercase tracking-widest text-white/20 font-bold">Primary Mood</label>
+                                                <div className="flex items-center gap-2 text-white">
+                                                    <Zap className="w-4 h-4 text-[#e9c49a]" />
+                                                    <span className="text-sm font-medium">{selectedImage.coreMood || 'Balanced'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 space-y-3">
+                                                <label className="text-[9px] uppercase tracking-widest text-white/20 font-bold">Aura Type</label>
+                                                <div className="flex items-center gap-2 text-white">
+                                                    <Activity className="w-4 h-4 text-purple-400" />
+                                                    <span className="text-sm font-medium">{selectedImage.auraDescriptor || 'Magnetic'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Secondary Moods */}
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedImage.secondaryMoods?.map((mood: string) => (
+                                                <span key={mood} className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[9px] uppercase font-bold tracking-widest text-white/40">
+                                                    {mood}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="pt-16 space-y-6">
-                                    <button className="w-full group h-16 bg-[#e9c49a] text-black rounded-3xl font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-white transition-all shadow-[0_20px_40px_rgba(233,196,154,0.15)] flex items-center justify-center gap-3">
-                                        <Download className="w-4 h-4" /> Sync Asset to Archive
-                                    </button>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <button className="h-14 rounded-2xl bg-white/5 border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2">
-                                            <Share2 className="w-4 h-4" /> Share
-                                        </button>
-                                        <button className="h-14 rounded-2xl bg-white/5 border border-white/10 text-[#e9c49a] font-bold text-[10px] uppercase tracking-widest hover:bg-[#e9c49a]/10 transition-all flex items-center justify-center gap-2">
-                                            <Heart className="w-4 h-4" /> Archive
-                                        </button>
+                                    {/* Narrative Section */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <FileText className="w-4 h-4 text-white/20" />
+                                            <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Narrative Fragment</span>
+                                        </div>
+                                        <div className="space-y-4">
+                                            {selectedImage.narrativeFragment && (
+                                                <p className="text-2xl font-serif italic text-white/80 leading-relaxed border-l-2 border-[#e9c49a]/30 pl-6">
+                                                    "{selectedImage.narrativeFragment}"
+                                                </p>
+                                            )}
+                                            <p className="text-sm font-light text-white/40 leading-relaxed pl-6">
+                                                {selectedImage.description}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden relative mt-8">
-                                        <motion.div
-                                            initial={{ x: "-100%" }}
-                                            animate={{ x: "100%" }}
-                                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                                            className="absolute inset-0 bg-gradient-to-r from-transparent via-[#e9c49a]/30 to-transparent w-2/3"
-                                        />
+                                    {/* Technical Specs / Visual Attributes */}
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <Camera className="w-4 h-4 text-white/20" />
+                                            <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-white/20">Visual Signature</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { label: 'Style', val: selectedImage.style, icon: Palette },
+                                                { label: 'Framing', val: selectedImage.framing, icon: Maximize2 },
+                                                { label: 'Tone', val: selectedImage.tone, icon: Sun },
+                                                { label: 'Lighting', val: selectedImage.lighting, icon: ImageIcon }
+                                            ].map(spec => {
+                                                const Icon = spec.icon;
+                                                return (
+                                                    <div key={spec.label} className="flex flex-col gap-1 px-5 py-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                                                        <span className="text-[8px] uppercase tracking-widest text-white/20 font-bold">{spec.label}</span>
+                                                        <span className="text-xs text-white/60 font-medium flex items-center gap-2">
+                                                            <Icon className="w-3 h-3 text-[#e9c49a]/40" />
+                                                            {spec.val || 'Standard'}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="pt-10 flex flex-col gap-4">
+                                        <button
+                                            onClick={() => handleDownload(selectedImage.imageUrl, selectedImage.title)}
+                                            className="w-full group h-16 bg-[#e9c49a] text-black rounded-[2rem] font-bold text-[11px] uppercase tracking-[0.3em] hover:bg-white transition-all shadow-[0_20px_40px_rgba(233,196,154,0.15)] flex items-center justify-center gap-3"
+                                        >
+                                            <Download className="w-4 h-4" /> Synchronize Artifact
+                                        </button>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => handleShare(selectedImage)}
+                                                className="h-14 rounded-2xl bg-white/5 border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Share2 className="w-4 h-4" /> Transmit
+                                            </button>
+                                            <button
+                                                onClick={() => handleLike(selectedImage)}
+                                                className={cn(
+                                                    "h-14 rounded-2xl border font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+                                                    userLikes.includes(selectedImage.id)
+                                                        ? "bg-red-500/10 border-red-500/30 text-red-500"
+                                                        : "bg-white/5 border-white/10 text-[#e9c49a] hover:bg-[#e9c49a]/10"
+                                                )}
+                                            >
+                                                <Heart className={cn("w-4 h-4", userLikes.includes(selectedImage.id) && "fill-current")} />
+                                                {userLikes.includes(selectedImage.id) ? "Archived" : "Archive"}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Attribution Footer */}
+                                    <div className="pt-10 border-t border-white/5 flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Curated By</span>
+                                                <span className="text-[10px] text-white/50">{selectedImage.curatedBy || 'Amora Studio'}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="text-[8px] uppercase tracking-widest text-white/20 font-bold">Copyright</span>
+                                                <span className="text-[10px] text-[#e9c49a]/60">{selectedImage.copyrightStatus || 'Licensed'}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

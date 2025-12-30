@@ -33,6 +33,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Happy from "./pages/Happy";
 import Sad from "./pages/Sad";
+import Updates from "./pages/Updates";
 import NotFound from "./pages/NotFound";
 import WorkerLogin from "./pages/workers/WorkerLogin";
 import WorkerSignup from "./pages/workers/WorkerSignup";
@@ -84,6 +85,7 @@ const App = () => (
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/happy" element={<Happy />} />
           <Route path="/sad" element={<Sad />} />
+          <Route path="/updates" element={<Updates />} />
 
           {/* Worker System Routes */}
           <Route path="/workers/login" element={<WorkerLogin />} />

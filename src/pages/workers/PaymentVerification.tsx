@@ -65,7 +65,7 @@ export default function PaymentVerification() {
     const navigate = useNavigate();
     const [payments, setPayments] = useState<Payment[]>([]);
     const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-    const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "verified">("pending");
+    const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "approved">("pending");
     const [searchQuery, setSearchQuery] = useState("");
     const [verificationNotes, setVerificationNotes] = useState("");
     const [selectedFlags, setSelectedFlags] = useState<string[]>([]);
@@ -106,7 +106,9 @@ export default function PaymentVerification() {
     }, []);
 
     const filteredPayments = payments.filter(payment => {
-        const matchesStatus = filterStatus === "all" || payment.status === filterStatus;
+        const matchesStatus = filterStatus === "all" ||
+            payment.status === filterStatus ||
+            (filterStatus === 'approved' && payment.status === 'verified');
         const matchesSearch =
             payment.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             payment.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -124,14 +126,15 @@ export default function PaymentVerification() {
 
             // 1. Update Payment Record
             await updateDoc(doc(db, "payments", paymentId), {
-                status: action === "verify" ? "verified" : "rejected",
+                status: action === "verify" ? "approved" : "rejected",
+                approvedAt: action === "verify" ? serverTimestamp() : null,
                 verifiedAt: serverTimestamp(),
                 verifiedBy: workerEmail,
                 verificationNotes: verificationNotes || null,
                 flags: selectedFlags.length > 0 ? selectedFlags : null
             });
 
-            // 2. If verified, auto-upgrade User Plan in real-time
+            // 2. If verified/approved, auto-upgrade User Plan in real-time
             if (action === "verify") {
                 await updateDoc(doc(db, "users", selectedPayment.userId), {
                     plan: selectedPayment.plan,
@@ -141,7 +144,7 @@ export default function PaymentVerification() {
             }
 
             toast.success(
-                action === "verify" ? "Resonance Ascension Complete" : "Resonance Rejected",
+                action === "verify" ? "Payment Approved" : "Payment Rejected",
                 {
                     description: action === "verify"
                         ? `User plan has been upgraded to ${selectedPayment.plan.toUpperCase()}.`
@@ -176,7 +179,7 @@ export default function PaymentVerification() {
     };
 
     const pendingCount = payments.filter(p => p.status === "pending").length;
-    const verifiedCount = payments.filter(p => p.status === "verified").length;
+    const approvedCount = payments.filter(p => p.status === "approved" || p.status === "verified").length;
     const rejectedCount = payments.filter(p => p.status === "rejected").length;
 
     return (
@@ -219,10 +222,10 @@ export default function PaymentVerification() {
                     </div>
                     <div className="bg-[#070707] border border-white/5 p-6 rounded-[2rem] space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Verified</span>
+                            <span className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Approved</span>
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                         </div>
-                        <div className="text-3xl font-display text-emerald-500">{verifiedCount}</div>
+                        <div className="text-3xl font-display text-emerald-500">{approvedCount}</div>
                     </div>
                     <div className="bg-[#070707] border border-white/5 p-6 rounded-[2rem] space-y-3">
                         <div className="flex items-center justify-between">
@@ -253,13 +256,13 @@ export default function PaymentVerification() {
                         />
                     </div>
                     <div className="flex items-center gap-2 bg-white/[0.03] border border-white/10 p-1 rounded-2xl">
-                        {["all", "pending", "verified"].map((status) => (
+                        {["all", "pending", "approved"].map((status) => (
                             <button
                                 key={status}
                                 onClick={() => setFilterStatus(status as any)}
                                 className={cn(
                                     "px-6 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold transition-all",
-                                    filterStatus === status
+                                    filterStatus === status || (status === 'approved' && filterStatus as string === 'verified')
                                         ? "bg-[#e9c49a] text-black"
                                         : "text-white/40 hover:text-white"
                                 )}
@@ -306,7 +309,7 @@ export default function PaymentVerification() {
                                                     <span className={cn(
                                                         "text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-md border font-bold",
                                                         payment.status === "pending" ? "text-yellow-400 border-yellow-400/20 bg-yellow-400/5" :
-                                                            payment.status === "verified" ? "text-emerald-400 border-emerald-400/20 bg-emerald-400/5" :
+                                                            (payment.status === "approved" || payment.status === "verified") ? "text-emerald-400 border-emerald-400/20 bg-emerald-400/5" :
                                                                 "text-red-400 border-red-400/20 bg-red-400/5"
                                                     )}>
                                                         {payment.status}
@@ -474,7 +477,7 @@ export default function PaymentVerification() {
                                                 onClick={() => handleVerify(selectedPayment.id, "verify")}
                                                 className="flex-1 py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[11px] uppercase tracking-[0.4em] hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-2"
                                             >
-                                                <CheckCircle2 className="w-4 h-4" /> Verify
+                                                <CheckCircle2 className="w-4 h-4" /> Approve
                                             </button>
                                         </div>
                                     )}
@@ -484,7 +487,7 @@ export default function PaymentVerification() {
                                             <div className="flex items-center gap-2 text-[10px] text-white/40">
                                                 <CheckCircle2 className="w-4 h-4" />
                                                 <span>
-                                                    {selectedPayment.status === "verified" ? "Verified" : "Rejected"} by{" "}
+                                                    {(selectedPayment.status === "approved" || selectedPayment.status === "verified") ? "Approved" : "Rejected"} by{" "}
                                                     <strong className="text-white">{selectedPayment.verifiedBy}</strong>
                                                 </span>
                                             </div>

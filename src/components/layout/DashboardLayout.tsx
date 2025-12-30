@@ -439,6 +439,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: Sparkles, label: "Unlock Full Access", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
                             { icon: Receipt, label: "Transactions", path: "/transactions" },
+                            { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
                             { icon: HelpCircle, label: "Help & Terms", path: "/help" },
                         ]
                     }
@@ -478,6 +479,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: ShieldAlert, label: "Pro Access ✅", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
                             { icon: Receipt, label: "Transactions", path: "/transactions" },
+                            { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
                             { icon: User, label: "Support", path: "/support" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
@@ -520,6 +522,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: Crown, label: "Elite Badge 👑", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
                             { icon: Receipt, label: "Transactions", path: "/transactions" },
+                            { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }
@@ -556,6 +559,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: Star, label: "Verified Creator ⭐", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
                             { icon: Receipt, label: "Transactions", path: "/transactions" },
+                            { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }

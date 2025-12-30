@@ -162,7 +162,7 @@ export default function Transactions() {
     };
 
     const pendingCount = transactions.filter(t => t.status === "pending").length;
-    const approvedCount = transactions.filter(t => t.status === "approved").length;
+    const approvedCount = transactions.filter(t => t.status === "approved" || t.status === "verified").length;
     const rejectedCount = transactions.filter(t => t.status === "rejected").length;
 
     if (loading) {
