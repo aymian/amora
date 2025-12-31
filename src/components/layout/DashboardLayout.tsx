@@ -256,6 +256,63 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
         }
     };
 
+    // --- GLOBAL POPUP LOGIC ---
+    const [activePopup, setActivePopup] = useState<any>(null);
+
+    useEffect(() => {
+        if (!localUser?.id || !localUser?.plan) return;
+
+        const checkPopups = async () => {
+            // Fetch viewed popups
+            const viewedRef = collection(db, `users/${localUser.id}/viewed_popups`);
+            const viewedSnap = await getDocs(viewedRef);
+            const viewedIds = new Set(viewedSnap.docs.map(d => d.id));
+
+            // Fetch active global popups
+            // NOTE: Removed orderBy to avoid needing a custom index immediately. Sorting client-side.
+            const q = query(
+                collection(db, "global_popups"),
+                where("active", "==", true),
+                limit(10)
+            );
+
+            const snap = await getDocs(q);
+            const candidates = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() as any }))
+                .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            // Find first match
+            const match = candidates.find(popup =>
+                !viewedIds.has(popup.id) &&
+                (popup.targetPlans?.includes(localUser.plan) ||
+                    (localUser.plan === 'free' && popup.targetPlans?.includes('upgrade_candidate')))
+            );
+
+            if (match) {
+                setActivePopup(match);
+            }
+        };
+
+        checkPopups();
+    }, [localUser?.id, localUser?.plan, location.pathname]); // Re-check on nav implies "when in dashboard"
+
+    const handleDismissPopup = async () => {
+        if (!activePopup || !localUser?.id) return;
+
+        try {
+            // Mark as viewed in Firestore
+            await setDoc(doc(db, `users/${localUser.id}/viewed_popups`, activePopup.id), {
+                viewedAt: serverTimestamp()
+            });
+            setActivePopup(null);
+        } catch (error) {
+            console.error("Popup dismiss failed:", error);
+            // Close anyway locally
+            setActivePopup(null);
+        }
+    };
+    // --------------------------
+
     // Temporal Pulse Logic for Free Citizens
     const [timerPhase, setTimerPhase] = useState<'access' | 'upgrade' | null>(null);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -1166,6 +1223,53 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                     </AnimatePresence>
                 </main>
             </div>
+
+            {/* Global Announcement Popup */}
+            <AnimatePresence>
+                {activePopup && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-[#0A0A0A] border border-[#e9c49a]/20 rounded-[2.5rem] p-10 max-w-md w-full relative shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden"
+                        >
+                            {/* Decorative Background */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-[#e9c49a]/5 blur-[80px] rounded-full -z-10" />
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 blur-[80px] rounded-full -z-10" />
+
+                            <div className="space-y-6 text-center">
+                                <div className="w-16 h-16 mx-auto bg-[#e9c49a]/10 rounded-full flex items-center justify-center border border-[#e9c49a]/20 mb-4">
+                                    {activePopup.type === 'discount' ? <Star className="w-8 h-8 text-[#e9c49a]" /> :
+                                        activePopup.type === 'alert' ? <ShieldAlert className="w-8 h-8 text-red-400" /> :
+                                            <Sparkles className="w-8 h-8 text-[#e9c49a]" />}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h3 className="text-2xl font-display font-light text-white">
+                                        {activePopup.title}
+                                    </h3>
+                                    <p className="text-white/60 text-sm leading-relaxed font-light">
+                                        {activePopup.message}
+                                    </p>
+                                </div>
+
+                                <Button
+                                    onClick={handleDismissPopup}
+                                    className="w-full h-14 rounded-2xl bg-[#e9c49a] text-black font-bold uppercase tracking-widest text-xs hover:bg-white transition-all shadow-lg"
+                                >
+                                    Continue Transmission
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Mobile Bottom Navigation */}
             <MobileBottomNav />

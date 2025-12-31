@@ -14,6 +14,7 @@ import AdminNexus from "./pages/admin/AdminNexus";
 import MediaUpload from "./pages/admin/MediaUpload";
 import Contents from "./pages/admin/Contents";
 import ImageUpload from "./pages/admin/ImageUpload";
+import PopupManager from "./pages/admin/PopupManager";
 import Gallery from "./pages/Gallery";
 import ShortVideos from "./pages/ShortVideos";
 import Watch from "./pages/Watch";
@@ -101,6 +102,7 @@ const App = () => (
           <Route path="/manager/contents" element={<Contents />} />
           <Route path="/manager/image-upload" element={<ImageUpload />} />
           <Route path="/manager/helps" element={<AdminHelps />} />
+          <Route path="/popup" element={<PopupManager />} />
 
           {/* Worker System Routes */}
           <Route path="/workers/login" element={<WorkerLogin />} />
