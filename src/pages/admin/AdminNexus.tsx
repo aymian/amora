@@ -171,6 +171,7 @@ const AdminNexus = () => {
 
     const menuItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Control Room' },
+        { id: 'applications', icon: Users, label: 'Team Applications', path: '/manager/applications', alert: true },
         { id: 'payments', icon: CreditCard, label: 'Pending Payments', alert: true },
         { id: 'upload', icon: UploadCloud, label: 'Media Lab', path: '/manager/upload' },
         { id: 'image-upload', icon: ImageIcon, label: 'Visual Lab', path: '/manager/image-upload' },

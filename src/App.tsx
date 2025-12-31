@@ -37,6 +37,9 @@ import Sad from "./pages/Sad";
 import Updates from "./pages/Updates";
 import Help from "./pages/Help";
 import AdminHelps from "./pages/admin/AdminHelps";
+import AdminApplications from "./pages/admin/Applications";
+import Apply from "./pages/Apply";
+import ApplicationReply from "./pages/ApplicationReply";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/terms";
 import PrivacyPolicy from "./pages/privacy-policy";
@@ -102,7 +105,11 @@ const App = () => (
           <Route path="/manager/contents" element={<Contents />} />
           <Route path="/manager/image-upload" element={<ImageUpload />} />
           <Route path="/manager/helps" element={<AdminHelps />} />
+          <Route path="/manager/applications" element={<AdminApplications />} />
           <Route path="/popup" element={<PopupManager />} />
+
+          <Route path="/apply" element={<Apply />} />
+          <Route path="/reply" element={<ApplicationReply />} />
 
           {/* Worker System Routes */}
           <Route path="/workers/login" element={<WorkerLogin />} />

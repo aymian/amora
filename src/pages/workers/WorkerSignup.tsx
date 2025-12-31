@@ -55,10 +55,11 @@ const WorkerSignup = () => {
     };
 
     const toggleRole = (roleId: string) => {
+        // Single Role Logic: If clicked, set as the ONLY role. If already selected, do nothing (or deselect).
         if (selectedRoles.includes(roleId)) {
-            setSelectedRoles(selectedRoles.filter(id => id !== roleId));
+            setSelectedRoles([]);
         } else {
-            setSelectedRoles([...selectedRoles, roleId]);
+            setSelectedRoles([roleId]);
         }
     };
 
@@ -132,13 +133,29 @@ const WorkerSignup = () => {
                     <div className="space-y-6 h-[500px] overflow-y-auto custom-scrollbar p-1">
                         <h3 className="text-sm uppercase tracking-widest text-white/40 font-bold sticky top-0 bg-[#050505] pb-4 z-10">Assign Roles</h3>
                         <div className="space-y-3">
-                            {WORKER_ROLES.map((role) => (
+                            {WORKER_ROLES.filter(role => ![
+                                'content_editor',
+                                'content_curator',
+                                'community_moderator',
+                                'trust_safety_analyst',
+                                'rapid_response_operator',
+                                'queue_manager',
+                                'shift_supervisor',
+                                'metrics_viewer',
+                                'performance_analyst',
+                                'quality_reviewer',
+                                'brand_tone_reviewer',
+                                'operations_lead',
+                                'emergency_operator'
+                            ].includes(role.id)).map((role) => (
                                 <div
                                     key={role.id}
                                     onClick={() => toggleRole(role.id)}
                                     className={`p-4 rounded-2xl border cursor-pointer transition-all ${selectedRoles.includes(role.id)
-                                        ? 'bg-[#e9c49a]/10 border-[#e9c49a] text-white'
-                                        : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                        ? 'bg-[#e9c49a]/10 border-[#e9c49a] text-white opacity-100'
+                                        : selectedRoles.length > 0
+                                            ? 'bg-white/5 border-white/5 text-white/20 opacity-40 hover:opacity-100' // Faded if another is active
+                                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 opacity-100'
                                         }`}
                                 >
                                     <div className="flex items-center justify-between mb-2">
