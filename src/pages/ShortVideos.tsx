@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
 import {
     Heart,
     MessageSquare,
@@ -243,38 +243,21 @@ const VideoItem = ({
 };
 
 export default function ShortVideos() {
+    const { user: userData, loading: authLoading } = useOutletContext<{ user: any, loading: boolean }>();
     const navigate = useNavigate();
     const [videos, setVideos] = useState<VideoArtifact[]>([]);
-    const [userData, setUserData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeIndex, setActiveIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const userDoc = await getDoc(doc(db, "users", user.uid));
-                setUserData(userDoc.exists() ? { id: user.uid, ...userDoc.data() } : { id: user.uid, plan: "free" });
-                await fetchVideos();
-                setLoading(false);
-            } else {
-                const wasLoggedIn = localStorage.getItem('amora_resonance_active');
-                if (!wasLoggedIn) {
-                    navigate("/login");
-                    setLoading(false);
-                } else {
-                    // Wait for recovery
-                    setTimeout(() => {
-                        if (!auth.currentUser) {
-                            navigate("/login");
-                            setLoading(false);
-                        }
-                    }, 2000);
-                }
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
+        const initFeed = async () => {
+            if (authLoading || !userData) return;
+            await fetchVideos();
+            setLoading(false);
+        };
+        initFeed();
+    }, [userData, authLoading]);
 
     const fetchVideos = async () => {
         try {
@@ -320,35 +303,33 @@ export default function ShortVideos() {
 
 
     return (
-        <DashboardLayout user={userData}>
-            <div className="relative w-full h-[calc(100vh-theme(spacing.24))] bg-black overflow-hidden flex items-center justify-center">
-                <div
-                    ref={containerRef}
-                    onScroll={handleScroll}
-                    className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth custom-scrollbar-none z-10"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {videos.map((video, i) => (
-                        <VideoItem
-                            key={video.id}
-                            video={video}
-                            isActive={i === activeIndex}
-                            onScrollUp={() => scrollToVideo('up')}
-                            onScrollDown={() => scrollToVideo('down')}
-                            isFirst={i === 0}
-                            isLast={i === videos.length - 1}
-                            index={i}
-                            total={videos.length}
-                        />
-                    ))}
+        <div className="relative w-full h-[calc(100vh-theme(spacing.24))] bg-black overflow-hidden flex items-center justify-center">
+            <div
+                ref={containerRef}
+                onScroll={handleScroll}
+                className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth custom-scrollbar-none z-10"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {videos.map((video, i) => (
+                    <VideoItem
+                        key={video.id}
+                        video={video}
+                        isActive={i === activeIndex}
+                        onScrollUp={() => scrollToVideo('up')}
+                        onScrollDown={() => scrollToVideo('down')}
+                        isFirst={i === 0}
+                        isLast={i === videos.length - 1}
+                        index={i}
+                        total={videos.length}
+                    />
+                ))}
 
-                    {videos.length === 0 && (
-                        <div className="h-full w-full flex flex-col items-center justify-center space-y-8 bg-black">
-                            <Activity className="w-16 h-16 text-white/10 animate-pulse" />
-                            <p className="text-xs uppercase tracking-[0.4em] text-white/40 font-bold">Resonance Signal Lost</p>
-                        </div>
-                    )}
-                </div>
+                {videos.length === 0 && (
+                    <div className="h-full w-full flex flex-col items-center justify-center space-y-8 bg-black">
+                        <Activity className="w-16 h-16 text-white/10 animate-pulse" />
+                        <p className="text-xs uppercase tracking-[0.4em] text-white/40 font-bold">Resonance Signal Lost</p>
+                    </div>
+                )}
             </div>
 
             <style>{`
@@ -373,7 +354,7 @@ export default function ShortVideos() {
                     100% { transform: translateX(-100%); }
                 }
             `}</style>
-        </DashboardLayout>
+        </div>
     );
 }
 

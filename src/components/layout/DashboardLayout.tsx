@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
     LayoutGrid,
     Compass,
@@ -81,12 +81,11 @@ import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 
 interface DashboardLayoutProps {
-    children: React.ReactNode;
-    user: any;
+    user?: any;
     hideSidebar?: boolean;
 }
 
-export function DashboardLayout({ children, user, hideSidebar = false }: DashboardLayoutProps) {
+export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutProps) {
     const navigate = useNavigate();
     const location = useLocation();
     const [localUser, setLocalUser] = useState<any>(user);
@@ -166,7 +165,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
 
         const q = query(
             collection(db, "notifications"),
-            where("recipientId", "==", user.id),
+            where("recipientId", "==", localUser.id),
             limit(20)
         );
 
@@ -199,7 +198,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
 
                 const unreadInConv = messagesSnap.docs.filter(msgDoc => {
                     const msg = msgDoc.data();
-                    return msg.senderId !== user.id && !msg.read;
+                    return msg.senderId !== localUser.id && !msg.read;
                 }).length;
 
                 totalUnread += unreadInConv;
@@ -209,15 +208,15 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
         });
 
         return () => unsub();
-    }, [user?.id]);
+    }, [localUser?.id]);
 
     const handleApprove = async (notif: any) => {
-        if (!user?.id) return;
+        if (!localUser?.id) return;
         try {
-            const followDocId = `${notif.senderId}_${user.id}`;
+            const followDocId = `${notif.senderId}_${localUser.id}`;
             await setDoc(doc(db, "follows", followDocId), {
                 followerId: notif.senderId,
-                followingId: user.id,
+                followingId: localUser.id,
                 createdAt: serverTimestamp()
             });
 
@@ -228,9 +227,9 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
             await setDoc(doc(db, "notifications", confirmationId), {
                 id: confirmationId,
                 type: "alert",
-                senderId: user.id,
-                senderName: user.fullName || "Citizen",
-                senderPhoto: user.photoURL || "",
+                senderId: localUser.id,
+                senderName: localUser.fullName || "Citizen",
+                senderPhoto: localUser.photoURL || "",
                 recipientId: notif.senderId,
                 message: "approved your resonance request. You are now following each other.",
                 status: "read",
@@ -246,7 +245,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     };
 
     const handleDecline = async (notif: any) => {
-        if (!user?.id) return;
+        if (!localUser?.id) return;
         try {
             await setDoc(doc(db, "notifications", notif.id), { status: "declined" }, { merge: true });
             toast.error("Frequency Refused", {
@@ -262,7 +261,12 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     const [timeLeft, setTimeLeft] = useState(0);
 
     useEffect(() => {
-        if (user?.plan !== 'free') {
+        if (localUser?.plan !== 'pro' && localUser?.plan !== 'elite' && localUser?.plan !== 'creator' && localUser?.plan !== 'free') {
+            // Wait for sync
+            if (localLoading) return;
+        }
+
+        if (localUser?.plan !== 'free') {
             setTimerPhase(null);
             return;
         }
@@ -297,7 +301,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
         tick();
         const interval = setInterval(tick, 1000);
         return () => clearInterval(interval);
-    }, [user?.plan]);
+    }, [localUser?.plan]);
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -336,7 +340,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                     getDoc(doc(db, "site_content", "hero"))
                 ];
 
-                const isAdvanced = user?.plan === 'pro' || user?.plan === 'elite' || user?.plan === 'creator';
+                const isAdvanced = localUser?.plan === 'pro' || localUser?.plan === 'elite' || localUser?.plan === 'creator';
                 if (isAdvanced) {
                     fetchPromises.push(getDocs(query(collection(db, "users"), limit(50))));
                 }
@@ -375,7 +379,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
             }
         };
         fetchIndex();
-    }, [isSearchOpen, allArtifacts.length, user?.plan]);
+    }, [isSearchOpen, allArtifacts.length, localUser?.plan]);
 
     // Real-time filtering (YouTube-style autocomplete)
     useEffect(() => {
@@ -403,7 +407,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
     }, [isSearchOpen]);
 
     const getMenuItems = () => {
-        const plan = user?.plan || "free";
+        const plan = localUser?.plan || "free";
 
         switch (plan) {
             case "free":
@@ -422,7 +426,6 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                     {
                         label: "Experience",
                         items: [
-                            { icon: Smile, label: "Moods", path: "/moods", locked: true },
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai", locked: true },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Sparkles, label: "Exclusive Stories", path: "/moods", locked: true },
@@ -462,7 +465,6 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                     {
                         label: "Experience",
                         items: [
-                            { icon: Smile, label: "Moods", path: "/moods" },
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
@@ -504,7 +506,6 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                     {
                         label: "Experience",
                         items: [
-                            { icon: Smile, label: "Moods", path: "/moods" },
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
@@ -544,7 +545,6 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             { icon: Library, label: "Content Status", path: "/manager/nexus" },
                             { icon: DollarSign, label: "Earnings 💰", path: "/earnings" },
                             { icon: BarChart3, label: "Analytics 📊", path: "/analytics" },
-                            { icon: Smile, label: "Moods", path: "/moods" },
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                         ]
@@ -624,7 +624,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                                 <div
                                                     key={item.id}
                                                     onClick={() => {
-                                                        const isPhaseLocked = user?.plan === 'free' && timerPhase === 'upgrade';
+                                                        const isPhaseLocked = localUser?.plan === 'free' && timerPhase === 'upgrade';
                                                         if (isPhaseLocked && item.path !== '/upgrade') {
                                                             toast.error("Temporal Access Locked: Upgrade to continue exploration.");
                                                             return;
@@ -737,7 +737,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             <Search className="w-5 h-5 group-active:scale-90 transition-transform" />
                         </button>
 
-                        {(user?.plan === 'pro' || user?.plan === 'elite' || user?.plan === 'creator') && (
+                        {(localUser?.plan === 'pro' || localUser?.plan === 'elite' || localUser?.plan === 'creator') && (
                             <button
                                 onClick={() => navigate("/messages")}
                                 className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
@@ -751,7 +751,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             </button>
                         )}
 
-                        {(user?.plan === 'free' && timerPhase) && (
+                        {(localUser?.plan === 'free' && timerPhase) && (
                             <div className={cn(
                                 "flex items-center gap-3 px-4 py-1.5 rounded-full border transition-all duration-500",
                                 timerPhase === 'access'
@@ -908,12 +908,12 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                 <Settings className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
                                 <span className="text-sm font-light">Billing & Plan</span>
                             </DropdownMenuItem>
-                            {user?.plan !== 'creator' && (
+                            {localUser?.plan !== 'creator' && (
                                 <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#e9c49a]/10 hover:bg-[#e9c49a]/20 focus:bg-[#e9c49a]/20 cursor-pointer transition-all group mt-1">
                                     <Crown className="w-4 h-4 text-[#e9c49a]" />
                                     <span className="text-sm font-medium text-[#e9c49a]">
-                                        {user?.plan === 'free' ? "Upgrade to Pro" :
-                                            user?.plan === 'pro' ? "Upgrade to Elite" : "Unlock Creator Toolset"}
+                                        {localUser?.plan === 'free' ? "Upgrade to Pro" :
+                                            localUser?.plan === 'pro' ? "Upgrade to Elite" : "Unlock Creator Toolset"}
                                     </span>
                                 </DropdownMenuItem>
                             )}
@@ -943,7 +943,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                 {!hideSidebar && (
                     <aside className={cn(
                         "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#080808] to-[#050505] border-r border-[#e9c49a]/5 pt-8",
-                        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+                        isMobileMenuOpen ? "translate-x-0" : (location.pathname === '/messages' ? "-translate-x-full" : "-translate-x-full md:translate-x-0")
                     )}>
                         <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
                             <div className="flex flex-col gap-6">
@@ -959,7 +959,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                                 <button
                                                     key={item.label}
                                                     onClick={() => {
-                                                        const isLockedCurrent = user?.plan === 'free' && timerPhase === 'upgrade';
+                                                        const isLockedCurrent = localUser?.plan === 'free' && timerPhase === 'upgrade';
                                                         if (isLockedCurrent && item.path !== '/upgrade') {
                                                             toast.error("Protocol Locked: Complete synchronization to regain access.");
                                                             return;
@@ -974,7 +974,7 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                                                                 ? "opacity-50 cursor-not-allowed grayscale"
                                                                 : "text-white/40 hover:text-white hover:bg-white/[0.02]",
                                                         isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10",
-                                                        (user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
+                                                        (localUser?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
                                                     )}
                                                 >
                                                     <div className="flex items-center gap-3">
@@ -1003,16 +1003,16 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                             <div className="space-y-4 pt-8 border-t border-white/5">
                                 <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
                                     <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
-                                        {user?.plan === 'free' ? 'Explorer Status' :
-                                            user?.plan === 'pro' ? 'Resonance Tier' :
-                                                user?.plan === 'elite' ? 'Elite Sovereign' :
-                                                    user?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
+                                        {localUser?.plan === 'free' ? 'Explorer Status' :
+                                            localUser?.plan === 'pro' ? 'Resonance Tier' :
+                                                localUser?.plan === 'elite' ? 'Elite Sovereign' :
+                                                    localUser?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
                                     </p>
                                     <p className="text-[9px] text-white/40 font-light leading-relaxed">
-                                        {user?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
-                                            user?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
-                                                user?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
-                                                    user?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
+                                        {localUser?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
+                                            localUser?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
+                                                localUser?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
+                                                    localUser?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
                                                         'Welcome to the future of cinematic narrative.'}
                                     </p>
                                 </div>
@@ -1032,17 +1032,28 @@ export function DashboardLayout({ children, user, hideSidebar = false }: Dashboa
                 {/* Main Content Area */}
                 <main className={cn(
                     "flex-1 overflow-y-auto bg-[#050505] custom-scrollbar relative",
-                    !hideSidebar && "md:ml-[240px]"
+                    !hideSidebar && location.pathname !== '/messages' && "md:ml-[240px]"
                 )}>
                     <div className={cn(
                         "p-6 lg:p-10 mx-auto space-y-10 relative min-h-full",
                         hideSidebar ? "w-full max-w-none px-0 py-0" : "max-w-7xl"
                     )}>
-                        {children}
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={location.pathname}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="w-full"
+                            >
+                                <Outlet context={{ user: localUser, loading: localLoading, toggleSidebar: () => setIsMobileMenuOpen(!isMobileMenuOpen) }} />
+                            </motion.div>
+                        </AnimatePresence>
 
                         {/* Orbital Upgrade Blocker - Absolute Phase Lock */}
                         <AnimatePresence>
-                            {(user?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => location.pathname.startsWith(p))) && (
+                            {(localUser?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => location.pathname.startsWith(p))) && (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}

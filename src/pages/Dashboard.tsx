@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
     Play,
     Clock,
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Dashboard() {
-    const [userData, setUserData] = useState<any>(null);
+    const { user: userData, loading: authLoading } = useOutletContext<{ user: any, loading: boolean }>();
     const [heroes, setHeroes] = useState<any[]>([]);
     const [newReleases, setNewReleases] = useState<any[]>([]);
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
@@ -28,68 +28,38 @@ export default function Dashboard() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        const fetchData = async () => {
+            if (authLoading || !userData) return;
+
             try {
-                if (user) {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists()) {
-                        const data = userDoc.data();
-                        if (!data.onboardingCompleted) {
-                            navigate("/onboarding");
-                            return;
-                        } else {
-                            setUserData({ id: user.uid, ...data });
-                        }
-                    } else {
-                        // User exists in Auth but not Firestore record yet
-                        setUserData({ id: user.uid, plan: "free" });
-                    }
-
-                    // Fetch Gallery Data (Videos)
-                    let videoItems: any[] = [];
-                    try {
-                        const q = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(20));
-                        const querySnapshot = await getDocs(q);
-                        videoItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    } catch (e) {
-                        console.warn("Archival gallery fetch failed:", e);
-                    }
-
-                    // ... rest of the fetch logic ...
-                    const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                    const mainHero = heroDoc.exists() ? { id: 'main-hero', ...heroDoc.data() } : null;
-
-                    const heroList = (mainHero ? [mainHero, ...videoItems] : videoItems)
-                        .filter((item: any) => item && (item.videoUrl || item.imageUrl))
-                        .slice(0, 5);
-
-                    setHeroes(heroList);
-                    setNewReleases(videoItems.slice(0, 6));
-
-                } else {
-                    // Check if we were previously logged in (avoid immediate flicker redirect)
-                    const wasLoggedIn = localStorage.getItem('amora_resonance_active');
-                    if (!wasLoggedIn) {
-                        navigate("/login");
-                    } else {
-                        // Wait a bit or let DashboardLayout try to recover
-                        setTimeout(() => {
-                            if (!auth.currentUser) navigate("/login");
-                        }, 2000);
-                    }
+                // Fetch Gallery Data (Videos)
+                let videoItems: any[] = [];
+                try {
+                    const q = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(20));
+                    const querySnapshot = await getDocs(q);
+                    videoItems = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (e) {
+                    console.warn("Archival gallery fetch failed:", e);
                 }
+
+                const heroDoc = await getDoc(doc(db, "site_content", "hero"));
+                const mainHero = heroDoc.exists() ? { id: 'main-hero', ...heroDoc.data() } : null;
+
+                const heroList = (mainHero ? [mainHero, ...videoItems] : videoItems)
+                    .filter((item: any) => item && (item.videoUrl || item.imageUrl))
+                    .slice(0, 5);
+
+                setHeroes(heroList);
+                setNewReleases(videoItems.slice(0, 6));
             } catch (err: any) {
                 console.error("Dashboard sync error:", err);
             } finally {
                 setLoading(false);
             }
-        });
+        };
 
-        // Set local flag on login
-        if (auth.currentUser) localStorage.setItem('amora_resonance_active', 'true');
-
-        return () => unsubscribe();
-    }, [navigate]);
+        fetchData();
+    }, [userData, authLoading]);
 
     // Auto-slide Timer (10 seconds)
     useEffect(() => {
@@ -104,19 +74,17 @@ export default function Dashboard() {
 
     const heroData = heroes[currentHeroIndex];
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Synchronizing Immersion...</p>
-                </div>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Synchronizing Immersion...</p>
             </div>
         );
     }
 
     return (
-        <DashboardLayout user={userData}>
+        <>
             {/* Dynamic Hero Banner Section */}
             <section className="relative group rounded-[40px] overflow-hidden aspect-[21/9] flex items-center p-8 lg:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] bg-black">
                 <AnimatePresence mode="wait">
@@ -271,6 +239,6 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

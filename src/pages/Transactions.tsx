@@ -138,7 +138,7 @@ export default function Transactions() {
             case "verified":
                 return "Your payment has been verified and is awaiting final approval.";
             case "approved":
-                return "Your payment has been approved! Your account has been upgraded.";
+                return "Your payment has been verified! Your account has been upgraded.";
             case "rejected":
                 return "Your payment was rejected. Please review the notes below.";
             default:
@@ -162,7 +162,7 @@ export default function Transactions() {
     };
 
     const pendingCount = transactions.filter(t => t.status === "pending").length;
-    const approvedCount = transactions.filter(t => t.status === "approved" || t.status === "verified").length;
+    const verifiedCount = transactions.filter(t => t.status === "approved" || t.status === "verified").length;
     const rejectedCount = transactions.filter(t => t.status === "rejected").length;
 
     if (loading) {
@@ -215,10 +215,10 @@ export default function Transactions() {
                     </div>
                     <div className="bg-white/[0.02] border border-white/5 p-6 rounded-[2rem] space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Approved</span>
+                            <span className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Verified</span>
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                         </div>
-                        <div className="text-3xl font-display text-emerald-500">{approvedCount}</div>
+                        <div className="text-3xl font-display text-emerald-500">{verifiedCount}</div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/5 p-6 rounded-[2rem] space-y-3">
                         <div className="flex items-center justify-between">
@@ -273,7 +273,7 @@ export default function Transactions() {
                                                         "text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-md border font-bold",
                                                         getStatusColor(transaction.status)
                                                     )}>
-                                                        {transaction.status}
+                                                        {transaction.status === 'approved' ? 'verified' : transaction.status}
                                                     </span>
                                                 </div>
                                                 <p className="text-[10px] text-white/40">
@@ -341,7 +341,7 @@ export default function Transactions() {
                                             <div className="flex items-center gap-3 mb-2">
                                                 {getStatusIcon(selectedTransaction.status)}
                                                 <span className="text-sm font-medium text-white uppercase tracking-widest">
-                                                    {selectedTransaction.status}
+                                                    {selectedTransaction.status === 'approved' ? 'verified' : selectedTransaction.status}
                                                 </span>
                                             </div>
                                             <p className="text-[11px] text-white/60 leading-relaxed">

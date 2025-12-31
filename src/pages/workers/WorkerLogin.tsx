@@ -58,6 +58,7 @@ const WorkerLogin = () => {
         // Verify 2FA against the stored passcode in workerData
         if (workerData?.passcode && twoFACode === workerData.passcode) {
             // Success
+            localStorage.setItem("amora_worker_email", email);
             navigate('/workers/select-role');
         } else {
             setError("Invalid authentication code.");

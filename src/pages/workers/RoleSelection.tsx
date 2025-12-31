@@ -49,7 +49,13 @@ const RoleSelection = () => {
 
         // Set active role for session
         localStorage.setItem('amora_active_worker_role', selectedRole);
-        navigate('/workers/dashboard');
+
+        // Direct redirect for high-octane roles
+        if (selectedRole === 'payment_verifier') navigate('/workers/payment-verification');
+        else if (selectedRole === 'payment_approver') navigate('/workers/payment-approval');
+        else if (selectedRole === 'payment_rejector') navigate('/workers/payment-rejection');
+        else if (selectedRole === 'mood_content_uploader') navigate('/workers/mood-upload');
+        else navigate('/workers/dashboard');
     };
 
     const handleLogout = async () => {

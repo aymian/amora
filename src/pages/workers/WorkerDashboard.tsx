@@ -21,7 +21,8 @@ import {
     Clock,
     Zap,
     Settings,
-    LayoutGrid
+    LayoutGrid,
+    Ban
 } from 'lucide-react';
 import { getRoleDefinition, WorkerRole } from '@/types/roles';
 import ShortUpload from './ShortUpload';
@@ -103,11 +104,26 @@ const WorkerDashboard = () => {
         const base = [{ icon: LayoutDashboard, label: 'Dashboard', active: true }];
 
         // Payment Roles
-        if (['payment_verifier', 'payment_approver', 'payment_rejector'].includes(activeRole)) {
+        if (activeRole === 'payment_verifier') {
             return [
                 ...base,
-                { icon: Clock, label: 'Payment Queue', alert: true, path: '/workers/payment-verification' },
-                { icon: CheckCircle2, label: 'Verified Requests' },
+                { icon: Clock, label: 'Verify Queue', alert: true, path: '/workers/payment-verification' },
+                { icon: FileText, label: 'Activity Log' }
+            ];
+        }
+
+        if (activeRole === 'payment_approver') {
+            return [
+                ...base,
+                { icon: ShieldAlert, label: 'Approval Queue', alert: true, path: '/workers/payment-approval' },
+                { icon: FileText, label: 'Activity Log' }
+            ];
+        }
+
+        if (activeRole === 'payment_rejector') {
+            return [
+                ...base,
+                { icon: Ban, label: 'Rejection Queue', alert: true, path: '/workers/payment-rejection' },
                 { icon: FileText, label: 'Activity Log' }
             ];
         }
@@ -116,7 +132,7 @@ const WorkerDashboard = () => {
         if (['mood_content_uploader'].includes(activeRole)) {
             return [
                 ...base,
-                { icon: UploadCloud, label: 'Mood Upload' },
+                { icon: UploadCloud, label: 'Mood Upload', path: '/workers/mood-upload' },
                 { icon: Film, label: 'My Uploads' },
                 { icon: FileText, label: 'Drafts' }
             ];

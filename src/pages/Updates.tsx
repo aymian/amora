@@ -11,9 +11,8 @@ import {
     Flame,
     Layout
 } from "lucide-react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { auth } from "@/lib/firebase";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 interface UpdateItem {
     id: string;
@@ -103,22 +102,11 @@ const getTypeIcon = (type: UpdateItem["type"]) => {
 };
 
 export default function Updates() {
+    const { user: userData } = useOutletContext<{ user: any }>();
     const navigate = useNavigate();
-    const [userData, setUserData] = useState<any>(null);
-
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
-            if (user) {
-                setUserData({ id: user.uid, email: user.email });
-            } else {
-                navigate("/login");
-            }
-        });
-        return () => unsubscribe();
-    }, [navigate]);
 
     return (
-        <DashboardLayout user={userData}>
+        <>
             <div className="min-h-screen py-20 px-6 max-w-5xl mx-auto space-y-16 pb-40 relative">
                 {/* Background Glow */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#e9c49a]/[0.02] blur-[150px] -z-10 rounded-full" />
@@ -232,6 +220,6 @@ export default function Updates() {
             <style>{`
                 .font-display { font-family: 'Cinzel', serif; }
             `}</style>
-        </DashboardLayout>
+        </>
     );
 }
