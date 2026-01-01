@@ -33,7 +33,8 @@ import {
     MonitorPlay,
     Instagram,
     Eye,
-    Diamond
+    Diamond,
+    X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db, auth } from "@/lib/firebase";
@@ -303,6 +304,16 @@ export default function Watch() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const formatDate = (date: any) => {
+        if (!date) return "Oct 24, 2024";
+        const d = date?.seconds ? new Date(date.seconds * 1000) : new Date(date);
+        return d.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+    };
+
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans flex flex-col pt-4 pb-20">
             <main className="max-w-[1920px] mx-auto w-full px-4 lg:px-12 py-4">
@@ -420,23 +431,26 @@ export default function Watch() {
                                 <div className="flex items-center gap-3 text-[12px] text-white/30 font-bold uppercase tracking-widest">
                                     <span className="text-white/60">LOVE BUSTER</span>
                                     <span>•</span>
-                                    <span>2.1M views</span>
+                                    <span>{videoData?.views ? videoData.views.toLocaleString() : "2.1M"} views</span>
                                     <span>•</span>
-                                    <span>1 hour ago</span>
+                                    <span>{formatDate(videoData?.createdAt)}</span>
                                 </div>
                             </div>
 
                             {/* Action Row */}
                             <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
-                                <div className="flex items-center gap-2">
                                     <div className="flex items-center bg-[#e9c49a]/5 border border-[#e9c49a]/10 rounded-xl overflow-hidden shadow-lg">
                                         <button className="flex items-center gap-2.5 px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors border-r border-[#e9c49a]/10">
                                             <ThumbsUp className="w-5 h-5 text-[#e9c49a] fill-[#e9c49a]" />
-                                            <span className="text-[12px] font-bold uppercase tracking-wider text-[#e9c49a]">LIKE artifact</span>
+                                            <span className="text-[12px] font-bold uppercase tracking-wider text-[#e9c49a]">
+                                                {videoData?.likes ? videoData.likes.toLocaleString() : "Like"}
+                                            </span>
                                         </button>
                                         <button className="px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors flex items-center gap-2">
                                             <ThumbsDown className="w-5 h-5 text-white/40 group-hover:text-[#e9c49a]" />
-                                            <span className="text-[12px] font-bold uppercase tracking-wider text-white/20">Archive</span>
+                                            <span className="text-[12px] font-bold uppercase tracking-wider text-white/20">
+                                                {videoData?.dislikes ? videoData.dislikes.toLocaleString() : "Dislike"}
+                                            </span>
                                         </button>
                                     </div>
 
@@ -445,9 +459,6 @@ export default function Watch() {
                                     </button>
                                     <button className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/5 hover:text-[#e9c49a] transition-all font-bold text-[12px] uppercase tracking-wider">
                                         <Download className="w-4 h-4" /> Download
-                                    </button>
-                                    <button className="flex items-center gap-2.5 px-8 py-3 rounded-xl bg-gradient-to-r from-[#e9c49a] to-[#8b6544] text-black font-black text-[12px] uppercase tracking-widest hover:opacity-90 transition-all shadow-[0_10px_30px_rgba(233,196,154,0.2)]">
-                                        <MonitorPlay className="w-4 h-4 fill-black" /> SUBSCRIBE
                                     </button>
                                 </div>
 
@@ -497,6 +508,12 @@ export default function Watch() {
                                     <div className="flex items-center justify-between">
                                         <h3 className="text-sm font-black uppercase tracking-widest text-white/60">NEXT UP</h3>
                                         <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => setIsSidebarCollapsed(true)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all mb-0.5"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
                                             <span className="text-[10px] font-bold text-[#e9c49a]/40 uppercase tracking-widest">AUTOPLAY</span>
                                             <button
                                                 onClick={() => setIsAutoplayEnabled(!isAutoplayEnabled)}
@@ -548,7 +565,6 @@ export default function Watch() {
                                         <h3 className="text-[10px] font-black uppercase tracking-widest text-[#e9c49a]/20">QUICK ACCESS</h3>
                                         <div className="grid grid-cols-5 gap-3">
                                             {[
-                                                { icon: MonitorPlay, color: "bg-[#e9c49a] text-black" },
                                                 { icon: Diamond, color: "bg-white/5 text-[#e9c49a]/40" },
                                                 { icon: Eye, color: "bg-[#8b6544] text-white" },
                                                 { icon: Instagram, color: "bg-white/5 text-[#e9c49a]/40" },
