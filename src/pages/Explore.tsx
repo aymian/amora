@@ -104,23 +104,23 @@ export default function Explore() {
             {loading ? (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[...Array(8)].map((_, i) => (
-                        <div key={i} className="aspect-[3/4] bg-white/5 rounded-2xl animate-pulse" />
+                        <div key={i} className="aspect-[9/16] bg-white/5 rounded-2xl animate-pulse" />
                     ))}
                 </div>
             ) : (
-                <div className="columns-2 md:columns-3 xl:columns-4 gap-4 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     {items.map((item, idx) => (
                         <motion.div
                             key={item.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: idx * 0.05 }}
                             onClick={() => navigate(`/view/${item.id}`)}
-                            className="break-inside-avoid relative group rounded-2xl overflow-hidden bg-[#0a0a0a] border border-white/5 cursor-pointer hover:border-[#e9c49a]/30 transition-all"
+                            className="relative group rounded-2xl overflow-hidden bg-[#0a0a0a] border border-white/5 cursor-pointer hover:border-[#e9c49a]/30 transition-all aspect-[9/16]"
                         >
                             {/* Media */}
                             {item.type === 'video' ? (
-                                <div className="relative aspect-[9/16]">
+                                <div className="w-full h-full relative">
                                     <video
                                         src={item.url}
                                         className="w-full h-full object-cover"
@@ -136,7 +136,7 @@ export default function Explore() {
                             ) : (
                                 <img
                                     src={item.url}
-                                    className="w-full h-auto object-cover"
+                                    className="w-full h-full object-cover"
                                     loading="lazy"
                                     alt={item.title}
                                 />
