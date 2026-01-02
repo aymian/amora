@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, collection, getDocs, query, limit, where } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, limit, where, updateDoc, increment } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -100,7 +100,7 @@ export default function Watch() {
                             // First attempt: Direct Document ID fetch
                             const directDoc = await getDoc(doc(db, collName, artifactId));
                             if (directDoc.exists()) {
-                                foundDocData = { id: directDoc.id, ...directDoc.data() };
+                                foundDocData = { id: directDoc.id, collectionName: collName, ...directDoc.data() };
                                 break;
                             }
 
@@ -109,7 +109,7 @@ export default function Watch() {
                             const querySnap = await getDocs(q);
                             if (!querySnap.empty) {
                                 const d = querySnap.docs[0];
-                                foundDocData = { id: d.id, ...d.data() };
+                                foundDocData = { id: d.id, collectionName: collName, ...d.data() };
                                 break;
                             }
                         } catch (e) {
@@ -147,6 +147,29 @@ export default function Watch() {
 
         fetchData();
     }, [artifactId]);
+
+    // Update view count on load
+    useEffect(() => {
+        if (videoData?.id && videoData.id !== 'hero' && videoData?.collectionName) {
+            const incrementView = async () => {
+                // Optimistically update local view count immediately
+                setVideoData((prev: any) => ({
+                    ...prev,
+                    views: (prev?.views || 0) + 1
+                }));
+
+                try {
+                    const ref = doc(db, videoData.collectionName, videoData.id);
+                    await updateDoc(ref, { views: increment(1) });
+                } catch (e) {
+                    console.error("View increment failed:", e);
+                }
+            };
+            incrementView();
+        }
+        // Run once per video ID load
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videoData?.id, videoData?.collectionName]);
 
     // 4. Playback Pulse & Keyboard Controls
     useEffect(() => {
@@ -280,6 +303,33 @@ export default function Watch() {
             });
         } else {
             document.exitFullscreen();
+        }
+    };
+
+    const handleLike = async () => {
+        if (!videoData?.id || videoData.id === 'hero' || !videoData?.collectionName) return;
+
+        // Optimistic UI update
+        setVideoData((prev: any) => ({ ...prev, likes: (prev.likes || 0) + 1 }));
+
+        try {
+            const ref = doc(db, videoData.collectionName, videoData.id);
+            await updateDoc(ref, { likes: increment(1) });
+        } catch (error) {
+            console.error("Error liking video:", error);
+        }
+    };
+
+    const handleDislike = async () => {
+        if (!videoData?.id || videoData.id === 'hero' || !videoData?.collectionName) return;
+
+        setVideoData((prev: any) => ({ ...prev, dislikes: (prev.dislikes || 0) + 1 }));
+
+        try {
+            const ref = doc(db, videoData.collectionName, videoData.id);
+            await updateDoc(ref, { dislikes: increment(1) });
+        } catch (error) {
+            console.error("Error disliking video:", error);
         }
     };
 
@@ -431,7 +481,9 @@ export default function Watch() {
                                 <div className="flex items-center gap-3 text-[12px] text-white/30 font-bold uppercase tracking-widest">
                                     <span className="text-white/60">LOVE BUSTER</span>
                                     <span>•</span>
-                                    <span>{videoData?.views ? videoData.views.toLocaleString() : "2.1M"} views</span>
+                                    <span className="text-white/60">LOVE BUSTER</span>
+                                    <span>•</span>
+                                    <span>{videoData?.views ? videoData.views.toLocaleString() : "0"} views</span>
                                     <span>•</span>
                                     <span>{formatDate(videoData?.createdAt)}</span>
                                 </div>
@@ -439,14 +491,21 @@ export default function Watch() {
 
                             {/* Action Row */}
                             <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
+                                <div className="flex items-center gap-2">
                                     <div className="flex items-center bg-[#e9c49a]/5 border border-[#e9c49a]/10 rounded-xl overflow-hidden shadow-lg">
-                                        <button className="flex items-center gap-2.5 px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors border-r border-[#e9c49a]/10">
+                                        <button
+                                            onClick={handleLike}
+                                            className="flex items-center gap-2.5 px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors border-r border-[#e9c49a]/10"
+                                        >
                                             <ThumbsUp className="w-5 h-5 text-[#e9c49a] fill-[#e9c49a]" />
                                             <span className="text-[12px] font-bold uppercase tracking-wider text-[#e9c49a]">
                                                 {videoData?.likes ? videoData.likes.toLocaleString() : "Like"}
                                             </span>
                                         </button>
-                                        <button className="px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors flex items-center gap-2">
+                                        <button
+                                            onClick={handleDislike}
+                                            className="px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors flex items-center gap-2"
+                                        >
                                             <ThumbsDown className="w-5 h-5 text-white/40 group-hover:text-[#e9c49a]" />
                                             <span className="text-[12px] font-bold uppercase tracking-wider text-white/20">
                                                 {videoData?.dislikes ? videoData.dislikes.toLocaleString() : "Dislike"}

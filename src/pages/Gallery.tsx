@@ -67,7 +67,11 @@ export default function Gallery() {
                     try {
                         const q = query(collection(db, collName), orderBy("createdAt", "desc"));
                         const snap = await getDocs(q);
-                        if (!snap.empty) return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        if (!snap.empty) {
+                            return snap.docs
+                                .map(doc => ({ id: doc.id, ...doc.data() }))
+                                .filter((item: any) => item.inExplore !== false);
+                        }
 
                         // Fallback if empty (missing fields)
                         const q2 = query(collection(db, collName));

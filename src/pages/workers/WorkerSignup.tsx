@@ -8,6 +8,11 @@ import { AlertCircle, ChevronRight, UserPlus } from 'lucide-react';
 import { WORKER_ROLES } from '@/types/roles';
 
 const WorkerSignup = () => {
+    // Gate State
+    const [isGateUnlocked, setIsGateUnlocked] = useState(false);
+    const [gatePassword, setGatePassword] = useState('');
+    
+    // Form State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [passcode, setPasscode] = useState('');
@@ -16,6 +21,16 @@ const WorkerSignup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+
+    const handleGateUnlock = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (gatePassword === '2050') {
+            setIsGateUnlocked(true);
+            setError('');
+        } else {
+            setError('Invalid access code.');
+        }
+    };
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -63,9 +78,49 @@ const WorkerSignup = () => {
         }
     };
 
+    if (!isGateUnlocked) {
+        return (
+            <div className="min-h-screen bg-[#050505] text-white font-sans p-6 flex items-center justify-center">
+                <div className="w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
+                    <div className="flex flex-col items-center space-y-4">
+                        <Logo className="h-8 opacity-80" />
+                        <h1 className="text-2xl font-light text-center text-white/60">Restricted Access</h1>
+                    </div>
+                    
+                    <form onSubmit={handleGateUnlock} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase tracking-widest text-white/40">Enter Access Code</label>
+                            <input
+                                type="password"
+                                value={gatePassword}
+                                onChange={(e) => setGatePassword(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-[#e9c49a] text-center tracking-[0.5em] font-mono"
+                                placeholder="••••"
+                                autoFocus
+                            />
+                        </div>
+                        
+                        {error && (
+                             <div className="p-3 bg-red-500/10 text-red-400 rounded-lg text-xs text-center border border-red-500/20">
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="w-full py-4 bg-[#e9c49a] text-black font-bold uppercase tracking-widest rounded-xl hover:bg-white transition-all shadow-[0_0_20px_rgba(233,196,154,0.1)] hover:shadow-[0_0_30px_rgba(233,196,154,0.3)]"
+                        >
+                            Unlock
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans p-6 md:p-12 flex items-center justify-center">
-            <div className="w-full max-w-4xl space-y-12">
+            <div className="w-full max-w-4xl space-y-12 animate-in slide-in-from-bottom-5 duration-700">
                 <div className="flex flex-col items-center space-y-4">
                     <Logo className="h-8 opacity-80" />
                     <h1 className="text-3xl font-display font-light">Worker Registration</h1>

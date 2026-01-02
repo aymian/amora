@@ -486,6 +486,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai", locked: true },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Sparkles, label: "Exclusive Stories", path: "/moods", locked: true },
+                            { icon: UploadCloud, label: "Upload Artifact", path: "/upload" },
                         ]
                     },
                     {
@@ -524,6 +525,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                         items: [
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
+                            { icon: UploadCloud, label: "Upload Artifact", path: "/upload" },
                         ]
                     },
                     {
@@ -540,7 +542,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                             { icon: User, label: "My Profile", path: "/profile" },
                             { icon: Receipt, label: "Transactions", path: "/transactions" },
                             { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
-                            { icon: User, label: "Support", path: "/support" },
+                            { icon: User, label: "Support", path: "/help" },
                             { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }
@@ -566,6 +568,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
                             { icon: Activity, label: "Mood Timeline", path: "/mood-timeline" },
+                            { icon: UploadCloud, label: "Upload Artifact", path: "/upload" },
                         ]
                     },
                     {

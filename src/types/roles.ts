@@ -3,7 +3,7 @@ export type WorkerRole =
     | 'payment_verifier'
     | 'payment_approver'
     | 'payment_rejector'
-    | 'refund_tracker'
+
 
     // Content & Media
     | 'mood_content_uploader'
@@ -65,13 +65,7 @@ export const WORKER_ROLES: RoleDefinition[] = [
         description: 'Reject invalid proofs with reasons.',
         permissions: ['view_payments', 'reject_payment']
     },
-    {
-        id: 'refund_tracker',
-        label: 'Refund Tracker',
-        category: 'Payment & Finance',
-        description: 'Track disputes and flag suspicious users.',
-        permissions: ['view_refunds', 'flag_user']
-    },
+
 
     // Content & Media
     {

@@ -54,6 +54,9 @@ import MoodContentUploader from "./pages/workers/MoodContentUploader";
 import ShortUpload from './pages/workers/ShortUpload';
 import WorkersControlCenter from "./pages/admin/workers/WorkersControlCenter";
 import WorkerProfile from "./pages/admin/workers/WorkerProfile";
+import Upload from "./pages/Upload";
+import ViewArtifact from "./pages/ViewArtifact";
+import Explore from "./pages/Explore";
 import DashboardLayout from "./components/layout/DashboardLayout";
 
 const queryClient = new QueryClient();
@@ -94,7 +97,11 @@ const App = () => (
             <Route path="/sad" element={<Sad />} />
             <Route path="/updates" element={<Updates />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/upload" element={<Upload />} />
+            <Route path="/explore" element={<Explore />} />
           </Route>
+
+          <Route path="/view/:id" element={<ViewArtifact />} />
 
           <Route path="/video-player" element={<VideoPlayer />} />
           <Route path="/manager" element={<AdminLogin />} />
@@ -112,6 +119,7 @@ const App = () => (
           <Route path="/reply" element={<ApplicationReply />} />
 
           {/* Worker System Routes */}
+          <Route path="/workers" element={<WorkerLogin />} />
           <Route path="/workers/login" element={<WorkerLogin />} />
           <Route path="/workers/signup" element={<WorkerSignup />} />
           <Route path="/workers/select-role" element={<RoleSelection />} />
