@@ -12,7 +12,7 @@ import {
     signInWithPopup,
     onAuthStateChanged
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
 import { LuxuryScene } from "@/components/video/LuxuryScene";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export default function Login() {
         email: "",
         password: "",
         fullName: "",
+        username: "",
         phone: ""
     });
 
@@ -59,12 +60,21 @@ export default function Login() {
                     navigate("/onboarding");
                 }
             } else {
+                // Check Username Uniqueness
+                const usernameQuery = query(collection(db, "users"), where("username", "==", formData.username));
+                const usernameSnap = await getDocs(usernameQuery);
+
+                if (!usernameSnap.empty) {
+                    throw new Error("Identity frequency (username) already claimed. Please choose another.");
+                }
+
                 const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
                 await updateProfile(userCredential.user, { displayName: formData.fullName });
 
                 await setDoc(doc(db, "users", userCredential.user.uid), {
                     uid: userCredential.user.uid,
                     fullName: formData.fullName,
+                    username: formData.username,
                     email: formData.email,
                     phone: formData.phone || null,
                     createdAt: new Date().toISOString(),
@@ -201,6 +211,17 @@ export default function Login() {
                                             className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:outline-none focus:border-[#e9c49a]/40 focus:bg-white/[0.06] transition-all"
                                             value={formData.fullName}
                                             onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                            required={!isLogin}
+                                        />
+                                    </div>
+                                    <div className="relative group">
+                                        <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-[#e9c49a] transition-colors" />
+                                        <input
+                                            type="text"
+                                            placeholder="Username (e.g. galaxy_traveler)"
+                                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-white text-sm focus:outline-none focus:border-[#e9c49a]/40 focus:bg-white/[0.06] transition-all"
+                                            value={formData.username}
+                                            onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/\s+/g, '') })}
                                             required={!isLogin}
                                         />
                                     </div>

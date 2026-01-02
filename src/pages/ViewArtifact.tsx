@@ -17,6 +17,7 @@ export default function ViewArtifact() {
     const [isLiked, setIsLiked] = useState(false);
     const [isDisliked, setIsDisliked] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [creatorUsername, setCreatorUsername] = useState<string>("");
 
     useEffect(() => {
         const fetchArtifact = async () => {
@@ -37,8 +38,16 @@ export default function ViewArtifact() {
                 }
 
                 if (docSnap.exists()) {
-                    setArtifact({ id: docSnap.id, ...docSnap.data() });
+                    const docData = docSnap.data();
+                    setArtifact({ id: docSnap.id, ...docData });
                     setCollectionName(col);
+
+                    // Fetch Creator Username
+                    if (docData.creatorId) {
+                        getDoc(doc(db, "users", docData.creatorId)).then(uSnap => {
+                            if (uSnap.exists()) setCreatorUsername(uSnap.data().username || "");
+                        });
+                    }
 
                     // Check user interaction state if logged in
                     if (auth.currentUser) {
@@ -280,13 +289,24 @@ export default function ViewArtifact() {
                                 </h1>
                             </div>
 
-                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#e9c49a] to-orange-500 flex items-center justify-center text-black font-bold text-xs">
+                            <div
+                                onClick={() => {
+                                    if (creatorUsername) navigate(`/u/@${creatorUsername}`);
+                                }}
+                                className={cn(
+                                    "flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 transition-all group/creator",
+                                    creatorUsername ? "cursor-pointer hover:bg-white/10 hover:scale-[1.02]" : ""
+                                )}
+                            >
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#e9c49a] to-orange-500 flex items-center justify-center text-black font-bold text-xs overflow-hidden">
+                                    {/* Try to show avatar if available in the future, for now initial */}
                                     {artifact.creatorName?.[0] || <User className="w-4 h-4" />}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-white">{artifact.creatorName || "Unknown Creator"}</p>
-                                    <p className="text-[10px] text-white/40 uppercase tracking-widest">Creator ID: {artifact.creatorId?.slice(0, 8)}</p>
+                                    <p className="text-sm font-bold text-white group-hover/creator:text-[#e9c49a] transition-colors">{artifact.creatorName || "Unknown Creator"}</p>
+                                    <p className="text-[10px] text-white/40 uppercase tracking-widest">
+                                        {creatorUsername ? `@${creatorUsername}` : `ID: ${artifact.creatorId?.slice(0, 8)}`}
+                                    </p>
                                 </div>
                             </div>
                         </div>

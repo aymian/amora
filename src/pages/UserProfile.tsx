@@ -1,222 +1,222 @@
+
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-    Users,
-    Heart,
-    MessageCircle,
     Share2,
-    ShieldCheck,
+    MapPin,
     Calendar,
-    Globe,
+    Link as LinkIcon,
+    Grid,
+    Heart,
+    Activity,
     Zap,
-    ArrowLeft,
-    Play,
-    Sparkles,
+    Crown,
+    ShieldCheck,
+    MessageCircle,
     UserPlus,
-    Lock
+    UserMinus,
+    Lock,
+    ArrowLeft
 } from "lucide-react";
-import { doc, getDoc, collection, getDocs, query, where, limit, onSnapshot, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, collection, query, where, getDocs, setDoc, deleteDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 
 export default function UserProfile() {
-    const { user: currentUser } = useOutletContext<{ user: any }>();
-    const { userId } = useParams();
+    const { username } = useParams();
     const navigate = useNavigate();
-    const [profile, setProfile] = useState<any>(null);
-    const [userVideos, setUserVideos] = useState<any[]>([]);
+    const [user, setUser] = useState<any>(null); // The profile being viewed
+    const [currentUser, setCurrentUser] = useState<any>(null); // The logged in user
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'content' | 'about'>('content');
-    const [followerCount, setFollowerCount] = useState(0);
+    const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts');
+    const [userContent, setUserContent] = useState<any[]>([]);
+
+    // Interaction State
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
-    const [requestPending, setRequestPending] = useState(false);
-    const [isPrivate, setIsPrivate] = useState(false);
-    const [privacyLoading, setPrivacyLoading] = useState(false);
+    const [stats, setStats] = useState({
+        followers: 0,
+        following: 0,
+        likes: 0,
+        views: '0'
+    });
 
+    // 1. Auth Check & Fetch Profile
     useEffect(() => {
-        if (currentUser) {
-            // Already synced
-        } else {
-            // navigate("/login");
-        }
-    }, [currentUser]);
-
-    useEffect(() => {
-        if (!userId) return;
-
-        // Real-time Follower Count
-        const q = query(collection(db, "follows"), where("followingId", "==", userId));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setFollowerCount(snapshot.size);
-        });
-
-        return () => unsubscribe();
-    }, [userId]);
-
-    useEffect(() => {
-        if (!userId || !currentUser?.id) return;
-
-        // Check if following
-        const followDocId = `${currentUser.id}_${userId}`;
-        const unsub = onSnapshot(doc(db, "follows", followDocId), (doc) => {
-            setIsFollowing(doc.exists());
-        });
-
-        return () => unsub();
-    }, [userId, currentUser?.id]);
-
-    useEffect(() => {
-        if (!userId || !currentUser?.id) return;
-
-        // Check if follow request is pending
-        const q = query(
-            collection(db, "notifications"),
-            where("type", "==", "follow_request"),
-            where("senderId", "==", currentUser.id),
-            where("recipientId", "==", userId),
-            where("status", "==", "pending")
-        );
-        const unsub = onSnapshot(q, (snapshot) => {
-            setRequestPending(!snapshot.empty);
-        });
-
-        return () => unsub();
-    }, [userId, currentUser?.id]);
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            if (!userId) return;
-            setLoading(true);
-            try {
-                // Fetch User Profile
-                const userDoc = await getDoc(doc(db, "users", userId));
-                if (userDoc.exists()) {
-                    const data = userDoc.data();
-                    setProfile({ id: userDoc.id, ...data });
-                    setIsPrivate(data.isPrivate || false);
-                }
-
-                // Fetch User Content
-                const q = query(collection(db, "gallery_videos"), where("creatorId", "==", userId));
-                const snap = await getDocs(q);
-
-                if (snap.empty) {
-                    // Fallback to featured for now if no creator content
-                    const fallbackQ = query(collection(db, "gallery_videos"), limit(12));
-                    const fallbackSnap = await getDocs(fallbackQ);
-                    setUserVideos(fallbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                } else {
-                    setUserVideos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                }
-
-            } catch (error) {
-                console.error("Profile resonance failed:", error);
-            } finally {
-                setLoading(false);
+        const unsubscribe = auth.onAuthStateChanged(async (authUser) => {
+            if (authUser) {
+                setCurrentUser(authUser);
+            } else {
+                // Allow viewing public profiles even if logged out? 
+                // For now, let's keep it open, but buttons won't work or will redirect.
+                setCurrentUser(null);
             }
-        };
 
-        fetchProfile();
-    }, [userId]);
+            if (username) {
+                await fetchProfileByUsername(username, authUser);
+            }
+        });
+        return () => unsubscribe();
+    }, [username]);
+
+    const fetchProfileByUsername = async (usernameParam: string, authUser: any) => {
+        setLoading(true);
+        try {
+            // Strip '@' if present
+            const cleanUsername = usernameParam.startsWith('@') ? usernameParam.slice(1) : usernameParam;
+
+            // Query by username
+            const q = query(collection(db, "users"), where("username", "==", cleanUsername));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+            const viewedUser = { uid: userDoc.id, ...userData };
+            setUser(viewedUser);
+
+            // Fetch Content & Stats
+            await fetchUserContent(viewedUser.uid, viewedUser);
+
+            // Check Follow Status
+            if (authUser) {
+                const followDocId = `${authUser.uid}_${viewedUser.uid}`;
+                const followDoc = await getDoc(doc(db, "follows", followDocId));
+                setIsFollowing(followDoc.exists());
+            }
+
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchUserContent = async (uid: string, userData: any) => {
+        try {
+            // Fetch Images & Videos
+            const qVideos = query(collection(db, "gallery_videos"), where("creatorId", "==", uid));
+            const qImages = query(collection(db, "gallery_images"), where("creatorId", "==", uid));
+
+            const [snapVideos, snapImages] = await Promise.all([getDocs(qVideos), getDocs(qImages)]);
+
+            const videos = snapVideos.docs.map(d => ({ id: d.id, ...d.data(), type: 'video' }));
+            const images = snapImages.docs.map(d => ({ id: d.id, ...d.data(), type: 'image' }));
+
+            const allContent = [...videos, ...images].sort((a: any, b: any) => {
+                const tA = a.createdAt?.toMillis?.() || 0;
+                const tB = b.createdAt?.toMillis?.() || 0;
+                return tB - tA; // Descending
+            });
+
+            setUserContent(allContent);
+
+            // Calculate Real Stats
+            const totalLikes = allContent.reduce((acc, curr: any) => acc + (curr.likes || 0), 0);
+            const totalViews = allContent.reduce((acc, curr: any) => acc + (curr.views || 0), 0);
+
+            const formatNumber = (num: number) => {
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+                if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+                return num.toString();
+            };
+
+            setStats({
+                followers: userData.followers?.length || 0,
+                following: userData.following?.length || 0,
+                likes: totalLikes,
+                views: formatNumber(totalViews)
+            });
+
+        } catch (e) {
+            console.error("Error fetching content:", e);
+        }
+    };
 
     const handleFollow = async () => {
-        if (!currentUser || !userId || !profile) return;
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+        if (!user) return;
+
         setFollowLoading(true);
-        const followDocId = `${currentUser.id}_${userId}`;
+        const followDocId = `${currentUser.uid}_${user.uid}`;
+        const targetUserRef = doc(db, "users", user.uid);
+        const currentUserRef = doc(db, "users", currentUser.uid);
 
         try {
             if (isFollowing) {
+                // Unfollow
                 await deleteDoc(doc(db, "follows", followDocId));
-            } else if (profile.isPrivate) {
-                if (requestPending) {
-                    // Optionally cancel request
-                } else {
-                    // Create Follow Request Notification
-                    const notifId = `REQ-${Date.now()}-${currentUser.id}`;
-                    await setDoc(doc(db, "notifications", notifId), {
-                        id: notifId,
-                        type: "follow_request",
-                        senderId: currentUser.id,
-                        senderName: currentUser.fullName || "Anonymous Citizen",
-                        senderPhoto: currentUser.photoURL || "",
-                        recipientId: userId,
-                        status: "pending",
-                        createdAt: serverTimestamp()
-                    });
-                    toast.success("Identity Request Transmitted", {
-                        description: "Your resonance request is awaiting citizen approval."
-                    });
-                }
+                // Update Arrays (Simplified, ideally use atomic updates or cloud functions)
+                // For now, relying on optimistic UI or simplistic client-side updates
+
+                // Note: The stats in 'user' (followers array) won't update automatically without a re-fetch or listener
+                // We'll update stats locally for UI response
+                setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+
+                toast.success(`Unfollowed @${user.username}`);
             } else {
+                // Follow
                 await setDoc(doc(db, "follows", followDocId), {
-                    followerId: currentUser.id,
-                    followingId: userId,
+                    followerId: currentUser.uid,
+                    followingId: user.uid,
                     createdAt: serverTimestamp()
                 });
+                setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
+                toast.success(`Following @${user.username}`);
             }
+            setIsFollowing(!isFollowing);
         } catch (error) {
-            console.error("Follow protocol failed:", error);
+            console.error(error);
+            toast.error("Action Failed");
         } finally {
             setFollowLoading(false);
         }
     };
 
-    const togglePrivacy = async () => {
-        if (!currentUser || currentUser.id !== userId) return;
-        setPrivacyLoading(true);
-        const newPrivacy = !isPrivate;
-        try {
-            await setDoc(doc(db, "users", userId), { isPrivate: newPrivacy }, { merge: true });
-            setIsPrivate(newPrivacy);
-            toast.success(newPrivacy ? "Privacy Protocol Active" : "Public Resonance Enabled", {
-                description: newPrivacy ? "Your profile is now de-indexed from unauthorized scouts." : "Your archival artifacts are now visible to the planetary grid."
-            });
-        } catch (error) {
-            console.error("Privacy toggle failed:", error);
-        } finally {
-            setPrivacyLoading(false);
-        }
-    };
-
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center">
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Scanning Identity Frequency...</p>
+                    <div className="w-16 h-16 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+                    <p className="text-[#e9c49a] tracking-[0.3em] text-xs font-bold animate-pulse">LOCATING SUBJECT...</p>
                 </div>
             </div>
         );
     }
 
-    if (!profile) {
+    if (!user) {
         return (
-            <div className="min-h-screen bg-[#0B0F1A] flex flex-col items-center justify-center text-center p-6">
-                <h1 className="text-4xl font-display font-light mb-4">Identity Not Found</h1>
-                <p className="text-white/40 mb-8 uppercase tracking-widest text-[10px]">The requested citizen does not exist in the planetary registry.</p>
-                <Button onClick={() => navigate(-1)} variant="outline" className="rounded-full px-8">Return to Nexus</Button>
+            <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-6">
+                <h1 className="text-4xl font-display font-light mb-4 text-white">Identity Not Found</h1>
+                <p className="text-white/40 mb-8 uppercase tracking-widest text-xs">The requested citizen (@{username?.replace('@', '')}) does not exist in the planetary registry.</p>
+                <Button onClick={() => navigate('/dashboard')} variant="outline" className="rounded-full px-8 border-white/10 text-white hover:bg-white/10">Return to Nexus</Button>
             </div>
         );
     }
 
     return (
-        <div className="space-y-12 pb-20">
-            {/* Cinematic Header */}
-            <header className="relative h-[400px] rounded-[3rem] overflow-hidden group shadow-2xl border border-white/5">
-                {/* Banner Image */}
-                <div className="absolute inset-0 z-0">
-                    <img
-                        src={profile.bannerURL || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80"}
-                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100"
-                        alt="Profile Banner"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F1A] via-[#0B0F1A]/40 to-transparent" />
-                </div>
+        <div className="min-h-screen bg-[#050505] pb-20 relative overflow-hidden">
+            <Toaster position="bottom-right" theme="dark" />
 
+            {/* Background Ambience */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#e9c49a]/5 rounded-full blur-[120px] mix-blend-screen" />
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[120px] mix-blend-screen" />
+            </div>
+
+            {/* Profile Header / Banner */}
+            <div className="relative h-[350px] md:h-[450px] w-full group">
                 {/* Back Button */}
                 <button
                     onClick={() => navigate(-1)}
@@ -225,218 +225,189 @@ export default function UserProfile() {
                     <ArrowLeft className="w-5 h-5 group-hover/back:-translate-x-1 transition-transform" />
                 </button>
 
-                {/* Profile Overlay */}
-                <div className="absolute bottom-12 left-12 right-12 z-10 flex flex-col md:flex-row items-end justify-between gap-8">
-                    <div className="flex flex-col md:flex-row items-center md:items-end gap-8">
-                        {/* Avatar */}
-                        <div className="w-40 h-40 rounded-[2.5rem] overflow-hidden border-4 border-[#0B0F1A] shadow-2xl relative translate-y-6">
-                            <img
-                                src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.fullName || 'User'}&background=random`}
-                                className="w-full h-full object-cover"
-                                alt={profile.fullName}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                        </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/20 to-[#050505] z-10" />
+                <img
+                    src={user.bannerURL}
+                    className="w-full h-full object-cover"
+                    alt="Cover"
+                />
 
-                        <div className="space-y-3 mb-4 text-center md:text-left">
-                            <div className="flex items-center justify-center md:justify-start gap-4">
-                                <h1 className="text-4xl lg:text-5xl font-display font-light tracking-tight">{profile.fullName}</h1>
-                                <div className="flex flex-col gap-1">
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-full text-[9px] uppercase font-bold tracking-[0.2em] border w-fit",
-                                        profile.plan === 'elite' ? "bg-[#e9c49a]/10 text-[#e9c49a] border-[#e9c49a]/20" :
-                                            profile.plan === 'pro' ? "bg-blue-500/10 text-blue-400 border-blue-400/20" :
-                                                profile.plan === 'creator' ? "bg-purple-500/10 text-purple-400 border-purple-400/20" : "bg-white/5 text-white/40 border-white/10"
-                                    )}>
-                                        {profile.plan || 'Free'} Protocol
-                                    </span>
-                                    {profile.id === currentUser?.id && (
-                                        <button
-                                            onClick={togglePrivacy}
-                                            disabled={privacyLoading}
-                                            className={cn(
-                                                "flex items-center gap-2 px-3 py-1 rounded-full text-[8px] uppercase tracking-widest font-bold border transition-all",
-                                                isPrivate ? "bg-red-500/10 text-red-400 border-red-400/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-400/20"
-                                            )}
-                                        >
-                                            <Lock className="w-3 h-3" /> {isPrivate ? "Private Identity" : "Public Identity"}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                            <p className="text-white/40 text-[11px] uppercase tracking-[0.3em] font-medium flex items-center justify-center md:justify-start gap-3">
-                                <Globe className="w-3.5 h-3.5 text-[#e9c49a]" />
-                                Citizenship: {profile.id.slice(0, 8).toUpperCase()}-AMR
-                            </p>
+                {/* Profile Info Overlay */}
+                <div className="absolute -bottom-20 left-0 right-0 z-20 px-6 md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row items-end gap-8">
+                    {/* Avatar Group */}
+                    <div className="relative group/avatar">
+                        <div className="w-32 h-32 md:w-44 md:h-44 rounded-[2rem] border-4 border-[#050505] overflow-hidden shadow-2xl bg-[#0a0a0a] relative">
+                            <img
+                                src={user.photoURL || `https://ui-avatars.com/api/?name=${user.fullName}&background=random`}
+                                className="w-full h-full object-cover"
+                                alt="Avatar"
+                            />
+                        </div>
+                        {/* Status Indicator (Mock online for now) */}
+                        <div className="absolute bottom-4 right-4 w-6 h-6 bg-emerald-500 border-4 border-[#050505] rounded-full" title="Online" />
+                    </div>
+
+                    {/* Text Info */}
+                    <div className="flex-1 mb-4 text-center md:text-left space-y-2">
+                        <h1 className="text-4xl md:text-5xl font-display font-light text-white tracking-tight flex items-center gap-3 justify-center md:justify-start">
+                            {user.fullName}
+                            {user.plan !== 'free' && <Crown className="w-6 h-6 text-[#e9c49a] fill-current" />}
+                        </h1>
+                        <p className="text-white/40 font-mono text-sm tracking-widest uppercase">@{user.username}</p>
+
+                        <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-white/60 mt-4 flex-wrap">
+                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#e9c49a]" /> {user.location || 'Unknown Location'}</span>
+                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-[#e9c49a]" /> Joined {new Date().getFullYear()}</span>
+                            {user.website && (
+                                <a href={user.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[#e9c49a] hover:underline">
+                                    <LinkIcon className="w-3 h-3" /> {user.website.replace(/^https?:\/\//, '')}
+                                </a>
+                            )}
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 mb-4">
-                        {currentUser?.id !== userId && (
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3 mb-4">
+                        {currentUser?.uid !== user.uid && (
                             <Button
                                 onClick={handleFollow}
-                                disabled={followLoading || (requestPending && !isFollowing)}
+                                disabled={followLoading}
                                 className={cn(
-                                    "h-12 px-8 rounded-full font-bold uppercase tracking-widest text-[10px] transition-all shadow-xl",
-                                    isFollowing
-                                        ? "bg-white/10 text-white border border-white/20 hover:bg-red-500/20 hover:text-red-400 hover:border-red-400/20"
-                                        : requestPending
-                                            ? "bg-white/5 text-white/40 border border-white/10 cursor-not-allowed"
-                                            : "bg-[#e9c49a] text-black hover:bg-white"
+                                    "rounded-full font-bold px-8 h-12 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all flex items-center gap-2",
+                                    isFollowing ? "bg-white/10 text-white hover:bg-red-500/20 hover:text-red-400" : "bg-white text-black hover:bg-gray-200 hover:scale-105"
                                 )}
                             >
-                                {isFollowing ? "Unfollow Citizen" : requestPending ? "Frequency Requested" : profile.isPrivate ? "Request Resonance" : "Follow Citizen"}
+                                {isFollowing ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                                {isFollowing ? "Unfollow" : "Follow"}
                             </Button>
                         )}
-                        {(isFollowing || currentUser?.id === userId) && (
-                            <Button
-                                onClick={() => navigate("/messages")}
-                                variant="outline"
-                                className="h-12 w-12 rounded-full p-0 border-white/10 bg-white/5 hover:bg-white/10"
-                            >
-                                <MessageCircle className="w-5 h-5 text-white/60" />
-                            </Button>
-                        )}
-                        <Button variant="outline" className="h-12 w-12 rounded-full p-0 border-white/10 bg-white/5 hover:bg-white/10">
-                            <Share2 className="w-5 h-5 text-white/60" />
+
+                        <Button variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">
+                            <Share2 className="w-5 h-5" />
                         </Button>
+                        {isFollowing && (
+                            <Button onClick={() => navigate('/messages')} variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">
+                                <MessageCircle className="w-5 h-5" />
+                            </Button>
+                        )}
                     </div>
                 </div>
-            </header>
+            </div>
 
-            {/* Profile Tabs & Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
-                {/* Sidebar Stats */}
-                <aside className="space-y-8">
-                    <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-8">
-                        <div className="space-y-2">
-                            <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Immersive Bio</p>
-                            <p className="text-sm text-white/60 font-light leading-relaxed">
-                                {profile.bio || "This citizen is currently navigating the deep space resonance of Amora. Identity verified within the planetary registry."}
-                            </p>
+            {/* Main Content Grid */}
+            <div className="max-w-7xl mx-auto px-6 md:px-12 mt-32 grid grid-cols-1 lg:grid-cols-12 gap-12">
+
+                {/* Left Sidebar: Stats & Bio */}
+                <div className="lg:col-span-4 space-y-8">
+                    {/* Bio Card */}
+                    <div className="bg-[#0A0A0A] border border-white/5 rounded-[2rem] p-8 space-y-6 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-50"><Activity className="w-24 h-24 text-white/5" /></div>
+
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#e9c49a] mb-2">My Bio</h3>
+                            <p className="text-white/70 font-light leading-relaxed">{user.bio || "No bio established."}</p>
                         </div>
 
-                        <hr className="border-white/5" />
-
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-[#e9c49a] font-bold">Followers</p>
-                                <p className="text-xl font-display font-light">{followerCount.toLocaleString()}</p>
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                            <div className="text-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                                <div className="text-xl font-display font-medium text-white">{stats.followers}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Followers</div>
                             </div>
-                            <div className="space-y-1">
-                                <p className="text-[9px] uppercase tracking-widest text-[#e9c49a] font-bold">Resonance</p>
-                                <p className="text-xl font-display font-light">85%</p>
+                            <div className="text-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                                <div className="text-xl font-display font-medium text-white">{stats.following}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Following</div>
                             </div>
-                        </div>
-
-                        <div className="space-y-4 pt-4">
-                            <div className="flex items-center gap-4 text-xs text-white/40">
-                                <Calendar className="w-4 h-4" /> Joined Dec 2025
+                            <div className="text-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                                <div className="text-xl font-display font-medium text-white">{stats.likes}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Likes</div>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-white/40">
-                                <ShieldCheck className="w-4 h-4 text-emerald-500" /> Identity Verified
+                            <div className="text-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
+                                <div className="text-xl font-display font-medium text-white">{stats.views}</div>
+                                <div className="text-[9px] uppercase tracking-widest text-white/40 font-bold">Impact</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-white/[0.04] to-transparent border border-white/10 space-y-6">
-                        <h4 className="text-[10px] uppercase tracking-widest font-bold flex items-center gap-2">
-                            <Sparkles className="w-3.5 h-3.5 text-[#e9c49a]" /> Shared Artifacts
-                        </h4>
-                        <div className="grid grid-cols-3 gap-2">
-                            {userVideos.slice(0, 6).map((vid) => (
-                                <div key={vid.id} className="aspect-square rounded-xl bg-black overflow-hidden border border-white/5 hover:border-[#e9c49a]/40 transition-all cursor-pointer group/art">
-                                    <img src={vid.imageUrl} className="w-full h-full object-cover opacity-60 group-hover/art:opacity-100 transition-opacity" alt="" />
-                                </div>
-                            ))}
                         </div>
                     </div>
-                </aside>
 
-                {/* Main Content Area */}
-                <div className="lg:col-span-3 space-y-10">
-                    {/* Tab Navigation */}
-                    <div className="flex items-center gap-10 border-b border-white/5 px-4">
+                    {/* Plan Card */}
+                    <div className={cn(
+                        "rounded-[2rem] p-8 space-y-4 relative overflow-hidden",
+                        user.plan === 'elite' ? "bg-gradient-to-br from-[#e9c49a]/20 to-black border border-[#e9c49a]/30" : "bg-gradient-to-br from-white/5 to-black border border-white/10"
+                    )}>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">Current Plan</h3>
+                            {user.plan === 'elite' && <Crown className="w-5 h-5 text-[#e9c49a]" />}
+                        </div>
+                        <div className="text-3xl font-display font-light text-white uppercase">{user.plan || 'Free'}</div>
+                        <p className="text-xs text-white/40 leading-relaxed">
+                            {user.plan === 'elite'
+                                ? "This citizen operates with maximum planetary resonance."
+                                : "Standard citizen protocol active."}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Right Content: Tabs & Feeds */}
+                <div className="lg:col-span-8 space-y-8">
+                    {/* Custom Tab Navigation */}
+                    <div className="flex items-center gap-2 p-1 bg-white/5 rounded-full w-fit">
                         {[
-                            { id: 'content', label: 'Cinematic Feed', icon: Play },
-                            { id: 'about', label: 'Registry Details', icon: Globe },
+                            { id: 'posts', label: 'Artifacts', icon: Grid },
+                            { id: 'likes', label: 'Resonances', icon: Heart },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
                                 className={cn(
-                                    "pb-6 text-[10px] uppercase tracking-[0.3em] font-bold flex items-center gap-3 transition-all relative",
-                                    activeTab === tab.id ? "text-white" : "text-white/20 hover:text-white/40"
+                                    "flex items-center gap-2 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+                                    activeTab === tab.id ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"
                                 )}
                             >
-                                <tab.icon className={cn("w-4 h-4", activeTab === tab.id ? "text-[#e9c49a]" : "")} />
-                                {tab.label}
-                                {activeTab === tab.id && (
-                                    <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e9c49a]" />
-                                )}
+                                <tab.icon className="w-3 h-3" /> {tab.label}
                             </button>
                         ))}
                     </div>
 
                     {/* Content Grid */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-8"
-                    >
-                        {activeTab === 'content' ? (
-                            userVideos.length > 0 ? (
-                                userVideos.map((video) => (
-                                    <div
-                                        key={video.id}
-                                        onClick={() => navigate(`/watch?name=${encodeURIComponent(video.title)}&id=${video.id}`)}
-                                        className="group relative aspect-video rounded-[2rem] overflow-hidden bg-black border border-white/5 hover:border-[#e9c49a]/30 transition-all cursor-pointer shadow-xl"
-                                    >
-                                        <img src={video.imageUrl} className="w-full h-full object-cover grayscale-50 group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" alt="" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-8">
-                                            <div className="flex items-center gap-3 mb-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all">
-                                                <span className="px-2 py-0.5 rounded-md bg-[#e9c49a] text-black text-[8px] font-bold uppercase tracking-widest">Original</span>
-                                                <span className="text-white/60 text-[10px] uppercase tracking-widest">14m 20s</span>
+                    <div className="min-h-[400px]">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeTab}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="grid grid-cols-2 md:grid-cols-3 gap-4"
+                            >
+                                {activeTab === 'posts' && (
+                                    userContent.length > 0 ? (
+                                        userContent.map((post) => (
+                                            <div key={post.id} className="aspect-[3/4] rounded-2xl bg-[#0A0A0A] border border-white/5 overflow-hidden relative group cursor-pointer" onClick={() => navigate(`/view/${post.id}`)}>
+                                                <img src={post.imageUrl || post.videoUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                                                    <div className="text-white text-sm font-bold truncate">{post.title}</div>
+                                                    <div className="flex items-center gap-2 text-xs text-white/60">
+                                                        <Heart className="w-3 h-3 fill-current" /> {post.likes || 0}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <h5 className="text-xl font-display font-light text-white group-hover:text-[#e9c49a] transition-colors">{video.title}</h5>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-40">
+                                            <Grid className="w-12 h-12 mb-4" />
+                                            <p className="text-sm font-light">No public artifacts detected.</p>
                                         </div>
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                                            <Play className="w-6 h-6 text-white fill-current" />
-                                        </div>
+                                    )
+                                )}
+
+                                {activeTab === 'likes' && (
+                                    <div className="col-span-full flex flex-col items-center justify-center py-20 text-center opacity-40">
+                                        <Heart className="w-12 h-12 mb-4" />
+                                        <p className="text-sm font-light">Resonances are private.</p>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="col-span-full py-20 text-center space-y-6">
-                                    <div className="w-20 h-20 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center mx-auto">
-                                        <Zap className="w-8 h-8 text-white/10" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-white/40 font-light italic">No public artifacts detected.</p>
-                                        <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">This citizen has not shared content with the planetary grid.</p>
-                                    </div>
-                                </div>
-                            )
-                        ) : (
-                            <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {[
-                                    { label: "Identity Hash", val: profile.id, icon: ShieldCheck },
-                                    { label: "Contact Protocol", val: profile.email, icon: Globe },
-                                    { label: "Resonance Plan", val: `${profile.plan || 'Free'} Member`, icon: Zap },
-                                    { label: "Status", val: "Operational Resonance", icon: Sparkles },
-                                ].map((item, i) => (
-                                    <div key={i} className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-[#e9c49a]/5 border border-[#e9c49a]/10 flex items-center justify-center text-[#e9c49a]">
-                                                <item.icon className="w-5 h-5" />
-                                            </div>
-                                            <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold">{item.label}</p>
-                                        </div>
-                                        <p className="text-sm text-white/60 font-mono truncate">{item.val}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </motion.div>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>

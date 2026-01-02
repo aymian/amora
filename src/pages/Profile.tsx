@@ -86,8 +86,8 @@ export default function Profile() {
                         website: userData.website || ""
                     });
 
-                    // Fetch User Content (Unified Query for demo)
-                    fetchUserContent(authUser.uid);
+                    // Fetch User Content & Calculate Stats
+                    fetchUserContent(authUser.uid, userData);
                 }
             } else {
                 navigate("/login");
@@ -97,8 +97,7 @@ export default function Profile() {
         return () => unsubscribe();
     }, [navigate]);
 
-    const fetchUserContent = async (uid: string) => {
-        // Fetch My Posts (Mock/Real mix)
+    const fetchUserContent = async (uid: string, userData: any) => {
         try {
             // Fetch Images & Videos
             const qVideos = query(collection(db, "gallery_videos"), where("creatorId", "==", uid));
@@ -121,7 +120,25 @@ export default function Profile() {
                 setMyPosts([]);
             }
 
-            // Mock Likes for UI Showcase
+            // Calculate Real Stats
+            const totalLikes = allContent.reduce((acc, curr: any) => acc + (curr.likes || 0), 0);
+            const totalViews = allContent.reduce((acc, curr: any) => acc + (curr.views || 0), 0);
+
+            // Format Views (e.g., 1200 -> 1.2K)
+            const formatNumber = (num: number) => {
+                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+                if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+                return num.toString();
+            };
+
+            setStats({
+                followers: userData.followers?.length || 0,
+                following: userData.following?.length || 0,
+                likes: totalLikes,
+                views: formatNumber(totalViews)
+            });
+
+            // Mock Likes for UI Showcase (To be replaced with real liked posts query later)
             setLikedPosts([
                 { id: 'l1', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80', views: '1.2M' },
                 { id: 'l2', imageUrl: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&q=80', views: '856K' },

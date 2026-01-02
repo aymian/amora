@@ -84,7 +84,7 @@ const App = () => (
             <Route path="/upgrade" element={<Upgrade />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="/transactions" element={<Transactions />} />
-            <Route path="/user-profile/:userId" element={<UserProfile />} />
+            <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/create-short" element={<CreateShort />} />
