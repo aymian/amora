@@ -84,7 +84,6 @@ const App = () => (
             <Route path="/upgrade" element={<Upgrade />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="/transactions" element={<Transactions />} />
-            <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/create-short" element={<CreateShort />} />
@@ -99,6 +98,7 @@ const App = () => (
             <Route path="/help" element={<Help />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/:username" element={<UserProfile />} />
           </Route>
 
           <Route path="/view/:id" element={<ViewArtifact />} />

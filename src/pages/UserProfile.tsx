@@ -16,11 +16,13 @@ import {
     UserPlus,
     UserMinus,
     Lock,
-    ArrowLeft
+    ArrowLeft,
+    ChevronDown
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, setDoc, deleteDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, setDoc, deleteDoc, serverTimestamp, addDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,6 +39,7 @@ export default function UserProfile() {
     // Interaction State
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const [requestPending, setRequestPending] = useState(false);
     const [stats, setStats] = useState({
         followers: 0,
         following: 0,
@@ -91,6 +94,17 @@ export default function UserProfile() {
                 const followDocId = `${authUser.uid}_${viewedUser.uid}`;
                 const followDoc = await getDoc(doc(db, "follows", followDocId));
                 setIsFollowing(followDoc.exists());
+
+                // Check for pending follow request
+                const requestQuery = query(
+                    collection(db, "notifications"),
+                    where("type", "==", "follow_request"),
+                    where("fromUserId", "==", authUser.uid),
+                    where("toUserId", "==", viewedUser.uid),
+                    where("status", "==", "pending")
+                );
+                const requestSnap = await getDocs(requestQuery);
+                setRequestPending(!requestSnap.empty);
             }
 
         } catch (error) {
@@ -149,36 +163,57 @@ export default function UserProfile() {
         if (!user) return;
 
         setFollowLoading(true);
-        const followDocId = `${currentUser.uid}_${user.uid}`;
-        const targetUserRef = doc(db, "users", user.uid);
-        const currentUserRef = doc(db, "users", currentUser.uid);
 
         try {
-            if (isFollowing) {
-                // Unfollow
-                await deleteDoc(doc(db, "follows", followDocId));
-                // Update Arrays (Simplified, ideally use atomic updates or cloud functions)
-                // For now, relying on optimistic UI or simplistic client-side updates
-
-                // Note: The stats in 'user' (followers array) won't update automatically without a re-fetch or listener
-                // We'll update stats locally for UI response
-                setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
-
-                toast.success(`Unfollowed @${user.username}`);
+            if (user.isPrivate) {
+                // Send follow request for private account
+                await addDoc(collection(db, "notifications"), {
+                    type: "follow_request",
+                    fromUserId: currentUser.uid,
+                    fromUserName: currentUser.displayName || "Anonymous",
+                    fromUserPhoto: currentUser.photoURL || "",
+                    toUserId: user.uid,
+                    status: "pending",
+                    createdAt: serverTimestamp()
+                });
+                setRequestPending(true);
+                toast.success("Follow request sent", {
+                    description: "Waiting for approval from this private account."
+                });
             } else {
-                // Follow
+                // Follow public account directly
+                const followDocId = `${currentUser.uid}_${user.uid}`;
                 await setDoc(doc(db, "follows", followDocId), {
                     followerId: currentUser.uid,
                     followingId: user.uid,
                     createdAt: serverTimestamp()
                 });
+                setIsFollowing(true);
                 setStats(prev => ({ ...prev, followers: prev.followers + 1 }));
                 toast.success(`Following @${user.username}`);
             }
-            setIsFollowing(!isFollowing);
         } catch (error) {
             console.error(error);
             toast.error("Action Failed");
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
+    const handleUnfollow = async () => {
+        if (!currentUser || !user) return;
+
+        setFollowLoading(true);
+        const followDocId = `${currentUser.uid}_${user.uid}`;
+
+        try {
+            await deleteDoc(doc(db, "follows", followDocId));
+            setIsFollowing(false);
+            setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+            toast.success(`Unfollowed @${user.username}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Unfollow failed");
         } finally {
             setFollowLoading(false);
         }
@@ -266,20 +301,57 @@ export default function UserProfile() {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex items-center gap-3 mb-4">
                         {currentUser?.uid !== user.uid && (
-                            <Button
-                                onClick={handleFollow}
-                                disabled={followLoading}
-                                className={cn(
-                                    "rounded-full font-bold px-8 h-12 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all flex items-center gap-2",
-                                    isFollowing ? "bg-white/10 text-white hover:bg-red-500/20 hover:text-red-400" : "bg-white text-black hover:bg-gray-200 hover:scale-105"
+                            <>
+                                {isFollowing ? (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                className="rounded-full font-bold px-8 h-12 bg-white/10 text-white hover:bg-white/20 border border-white/10 flex items-center gap-2"
+                                            >
+                                                <UserMinus className="w-4 h-4" />
+                                                Following
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48 bg-[#0a0a0a] border-white/10 text-white">
+                                            <DropdownMenuItem
+                                                onClick={() => console.log('Mute')}
+                                                className="cursor-pointer hover:bg-white/10"
+                                            >
+                                                Mute
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={handleUnfollow}
+                                                className="text-red-400 focus:text-red-400 cursor-pointer hover:bg-red-500/10"
+                                            >
+                                                Unfollow
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                ) : (
+                                    <Button
+                                        onClick={handleFollow}
+                                        disabled={followLoading || requestPending}
+                                        className={cn(
+                                            "rounded-full font-bold px-8 h-12 shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all flex items-center gap-2",
+                                            requestPending
+                                                ? "bg-white/5 text-white/50 border border-white/10"
+                                                : "bg-[#e9c49a] text-black hover:bg-white"
+                                        )}
+                                    >
+                                        {requestPending ? (
+                                            <>
+                                                <UserMinus className="w-4 h-4" /> Requested
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UserPlus className="w-4 h-4" /> Follow
+                                            </>
+                                        )}
+                                    </Button>
                                 )}
-                            >
-                                {isFollowing ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                                {isFollowing ? "Unfollow" : "Follow"}
-                            </Button>
+                            </>
                         )}
 
                         <Button variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">

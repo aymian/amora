@@ -19,7 +19,8 @@ import {
     TrendingUp,
     DollarSign,
     Play,
-    User
+    User,
+    Lock
 } from "lucide-react";
 import { auth, db, storage } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
@@ -279,6 +280,28 @@ export default function Profile() {
                         >
                             Edit Profile
                         </Button>
+
+                        <Button
+                            onClick={async () => {
+                                const newStatus = !user.isPrivate;
+                                try {
+                                    await updateDoc(doc(db, "users", user.uid), { isPrivate: newStatus });
+                                    setUser({ ...user, isPrivate: newStatus });
+                                    toast.success(newStatus ? "Profile Locked (Private)" : "Profile Unlocked (Public)");
+                                } catch (e) {
+                                    toast.error("Failed to update privacy settings");
+                                }
+                            }}
+                            variant="outline"
+                            className={cn(
+                                "rounded-full h-12 px-6 border-white/10 bg-white/5 hover:bg-white/10 flex items-center gap-2 transition-all",
+                                user?.isPrivate ? "text-red-400 border-red-400/20" : "text-emerald-400 border-emerald-400/20"
+                            )}
+                        >
+                            {user?.isPrivate ? <Lock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                            {user?.isPrivate ? "Private" : "Public"}
+                        </Button>
+
                         <Button variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">
                             <Share2 className="w-5 h-5" />
                         </Button>

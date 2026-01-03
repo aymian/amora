@@ -1,15 +1,24 @@
 {
-    "name": "Amorra",
+    "name": "Amorra | Cinematic Visual Stories",
     "short_name": "Amorra",
+    "description": "Immerse yourself in cinematic visual journeys crafted to evoke emotion, wonder, and deep connection.",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#050505",
     "theme_color": "#050505",
+    "orientation": "portrait",
+    "scope": "/",
     "icons": [
         {
             "src": "/favicon.ico",
             "sizes": "64x64 32x32 24x24 16x16",
             "type": "image/x-icon"
+        },
+        {
+            "src": "/app-interface.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 }

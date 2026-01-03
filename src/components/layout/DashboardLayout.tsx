@@ -448,7 +448,8 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
             const queryLower = searchQuery.toLowerCase();
             if (art.type === 'user') {
                 return (art.fullName?.toLowerCase().includes(queryLower) ||
-                    art.email?.toLowerCase().includes(queryLower));
+                    art.email?.toLowerCase().includes(queryLower) ||
+                    art.username?.toLowerCase().includes(queryLower));
             }
             return (art.title?.toLowerCase().includes(queryLower) ||
                 art.description?.toLowerCase().includes(queryLower));
@@ -694,7 +695,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                         if (item.type === 'video') {
                                                             navigate(`/watch?name=${encodeURIComponent(item.title)}&id=${item.id}`);
                                                         } else if (item.type === 'user') {
-                                                            navigate(`/user-profile/${item.id}`);
+                                                            navigate(`/@${item.username || item.id}`);
                                                         } else {
                                                             navigate(`/images?search=${item.title}`);
                                                         }
@@ -715,7 +716,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                         <div className="space-y-1">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-lg font-light text-white/60 group-hover:text-white transition-colors">
-                                                                    {item.type === 'user' ? (item.fullName || item.email) : item.title.toLowerCase().replace(/\s+/g, '_')}.{item.type === 'user' ? 'citizen' : 'artifact'}
+                                                                    {item.type === 'user' ? `@${item.username || item.email?.split('@')[0]}` : item.title.toLowerCase().replace(/\s+/g, '_')}.{item.type === 'user' ? 'citizen' : 'artifact'}
                                                                 </span>
                                                                 <span className={cn(
                                                                     "text-[8px] uppercase tracking-widest px-2 py-0.5 rounded-md border",

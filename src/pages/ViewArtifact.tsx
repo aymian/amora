@@ -291,7 +291,7 @@ export default function ViewArtifact() {
 
                             <div
                                 onClick={() => {
-                                    if (creatorUsername) navigate(`/u/@${creatorUsername}`);
+                                    if (creatorUsername) navigate(`/@${creatorUsername}`);
                                 }}
                                 className={cn(
                                     "flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 transition-all group/creator",
