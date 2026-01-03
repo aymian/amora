@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
     Check,
     Sparkles,
@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -108,9 +107,13 @@ const plans = [
 
 export default function Upgrade() {
     const navigate = useNavigate();
-    const [userData, setUserData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { user: userData, loading: authLoading } = useOutletContext<{ user: any, loading: boolean }>();
+    const [localUserData, setLocalUserData] = useState<any>(null);
     const [processing, setProcessing] = useState(false);
+
+    useEffect(() => {
+        if (userData) setLocalUserData(userData);
+    }, [userData]);
 
     const planHierarchy: Record<string, number> = {
         'free': 0,
@@ -153,29 +156,17 @@ export default function Upgrade() {
         }
     };
 
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const userDoc = await getDoc(doc(db, "users", user.uid));
-                if (userDoc.exists()) setUserData({ id: user.uid, ...userDoc.data() });
-            } else {
-                navigate("/login");
-            }
-            setLoading(false);
-        });
-        return unsubscribe;
-    }, [navigate]);
-
-    if (loading) {
+    if (authLoading || !userData) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Synchronizing Resonance...</p>
             </div>
         );
     }
 
     return (
-        <DashboardLayout user={userData}>
+        <>
             <div className="min-h-screen relative overflow-hidden px-6 lg:px-12 py-20 pb-40">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[#e9c49a]/5 blur-[120px] rounded-full pointer-events-none -z-10" />
 
@@ -255,7 +246,7 @@ export default function Upgrade() {
                                 {(() => {
                                     const currentRank = planHierarchy[(userData?.plan || 'free').toLowerCase()] ?? 0;
                                     const targetRank = planHierarchy[plan.tier];
-                                    const isCurrent = userData?.plan === plan.tier;
+                                    const isCurrent = localUserData?.plan === plan.tier;
                                     const isUpgrade = targetRank > currentRank;
 
                                     const baseClasses = cn(
@@ -375,6 +366,6 @@ export default function Upgrade() {
                     </motion.div>
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 }

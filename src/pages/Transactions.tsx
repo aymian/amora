@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
     CheckCircle2,
     XCircle,
@@ -29,7 +29,6 @@ import {
     Timestamp
 } from "firebase/firestore";
 import { cn } from "@/lib/utils";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { toast } from "sonner";
 
 interface Transaction {
@@ -59,47 +58,39 @@ const planDetails: Record<string, { name: string; price: string; color: string }
 
 export default function Transactions() {
     const navigate = useNavigate();
-    const [userData, setUserData] = useState<any>(null);
+    const { user: userData, loading: authLoading } = useOutletContext<{ user: any, loading: boolean }>();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                setUserData({ id: user.uid, email: user.email });
+        if (!userData?.id) return;
 
-                // Fetch user's transactions
-                const q = query(
-                    collection(db, "payments"),
-                    where("userId", "==", user.uid)
-                );
+        // Fetch user's transactions
+        const q = query(
+            collection(db, "payments"),
+            where("userId", "==", userData.id)
+        );
 
-                const unsubTransactions = onSnapshot(q, (snapshot) => {
-                    const fetchedTransactions = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    })) as Transaction[];
+        const unsubTransactions = onSnapshot(q, (snapshot) => {
+            const fetchedTransactions = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Transaction[];
 
-                    // Sort client-side to avoid composite index requirements
-                    fetchedTransactions.sort((a, b) => {
-                        const aTime = a.createdAt?.toMillis() || 0;
-                        const bTime = b.createdAt?.toMillis() || 0;
-                        return bTime - aTime; // Descending order (newest first)
-                    });
+            // Sort client-side to avoid composite index requirements
+            fetchedTransactions.sort((a, b) => {
+                const aTime = a.createdAt?.toMillis() || 0;
+                const bTime = b.createdAt?.toMillis() || 0;
+                return bTime - aTime; // Descending order (newest first)
+            });
 
-                    setTransactions(fetchedTransactions);
-                    setLoading(false);
-                });
-
-                return () => unsubTransactions();
-            } else {
-                navigate("/login");
-            }
+            setTransactions(fetchedTransactions);
+            setLoading(false);
         });
 
-        return () => unsubscribe();
-    }, [navigate]);
+        return () => unsubTransactions();
+    }, [userData?.id]);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -165,18 +156,17 @@ export default function Transactions() {
     const verifiedCount = transactions.filter(t => t.status === "approved" || t.status === "verified").length;
     const rejectedCount = transactions.filter(t => t.status === "rejected").length;
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
-            <DashboardLayout user={userData}>
-                <div className="min-h-screen flex items-center justify-center">
-                    <div className="text-white/20">Loading transactions...</div>
-                </div>
-            </DashboardLayout>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <div className="w-12 h-12 border-2 border-[#e9c49a]/20 border-t-[#e9c49a] rounded-full animate-spin" />
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[#e9c49a] font-bold animate-pulse">Syncing Financial Lattice...</p>
+            </div>
         );
     }
 
     return (
-        <DashboardLayout user={userData}>
+        <>
             <div className="min-h-screen py-20 px-6 max-w-7xl mx-auto space-y-12 pb-40">
                 {/* Header */}
                 <div className="space-y-4">
@@ -478,6 +468,6 @@ export default function Transactions() {
                     </div>
                 )}
             </div>
-        </DashboardLayout>
+        </>
     );
 }
