@@ -27,15 +27,17 @@ export default function Explore() {
     useEffect(() => {
         const fetchExploreContent = async () => {
             try {
-                const maxAssets = isLiteMode ? 8 : 30;
-                // Fetch Images (Relaxed Query)
+                // Increased limit for a more comprehensive explore view
+                const maxAssets = isLiteMode ? 12 : 200;
+
+                // Fetch Images 
                 const imagesQuery = query(
                     collection(db, "gallery_images"),
                     orderBy("views", "desc"),
                     limit(maxAssets)
                 );
 
-                // Fetch Videos (Relaxed Query)
+                // Fetch Videos 
                 const videosQuery = query(
                     collection(db, "gallery_videos"),
                     orderBy("views", "desc"),
@@ -61,7 +63,7 @@ export default function Explore() {
                             inExplore: data.inExplore
                         } as any;
                     })
-                    .filter(item => item.inExplore !== false); // Only hide if explicitly false
+                    .filter(item => item.inExplore !== false);
 
                 const fetchedVideos = videosSnap.docs
                     .map(doc => {
@@ -77,14 +79,13 @@ export default function Explore() {
                             inExplore: data.inExplore
                         } as any;
                     })
-                    .filter(item => item.inExplore !== false); // Only hide if explicitly false
+                    .filter(item => item.inExplore !== false);
 
-                // Merge and Sort by Views (or a mix of views/likes weight)
-                // For now, simple sort by views descending
+                // Merge and Sort by Views
                 const allItems = [...fetchedImages, ...fetchedVideos].sort((a, b) => b.views - a.views);
 
                 setItems(allItems);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error fetching explore content:", error);
             } finally {
                 setLoading(false);
@@ -92,7 +93,7 @@ export default function Explore() {
         };
 
         fetchExploreContent();
-    }, []);
+    }, [isLiteMode]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white p-4 pb-24 md:p-10">

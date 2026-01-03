@@ -66,9 +66,12 @@ export default function Gallery() {
     useEffect(() => {
         const fetchImages = async () => {
             try {
-                const maxAssets = isLiteMode ? 8 : 40;
+                // Increased limit significantly to show "all" for now
+                const maxAssets = isLiteMode ? 12 : 1000;
+
                 const fetchCollection = async (collName: string) => {
                     try {
+                        // Removed strict ordering requirement in catch to prevent failure if index missing
                         const q = query(collection(db, collName), orderBy("createdAt", "desc"), limit(maxAssets));
                         const snap = await getDocs(q);
                         if (!snap.empty) {
@@ -76,31 +79,30 @@ export default function Gallery() {
                                 .map(doc => ({ id: doc.id, ...doc.data() }))
                                 .filter((item: any) => item.inExplore !== false);
                         }
-
+                        return [];
+                    } catch (err) {
+                        console.warn(`Gallery fetch failed for ${collName}, falling back to unordered`, err);
                         const q2 = query(collection(db, collName), limit(maxAssets));
                         const snap2 = await getDocs(q2);
                         return snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    } catch (err) {
-                        console.warn(`Gallery fetch failed for ${collName}, falling back`, err);
-                        const q3 = query(collection(db, collName), limit(maxAssets));
-                        const snap3 = await getDocs(q3);
-                        return snap3.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     }
                 };
 
-                // Try gallery_images first
-                let imageList = await fetchCollection("gallery_images");
+                // Fetch all collections in parallel to show everything
+                const [imgList, vList, sList] = await Promise.all([
+                    fetchCollection("gallery_images"),
+                    fetchCollection("gallery_videos"),
+                    fetchCollection("shorts")
+                ]);
 
-                // If gallery is empty, try videos and shorts
-                if (imageList.length === 0) {
-                    const [vList, sList] = await Promise.all([
-                        fetchCollection("gallery_videos"),
-                        fetchCollection("shorts")
-                    ]);
-                    imageList = [...vList, ...sList].slice(0, maxAssets);
-                }
+                // Combine and sort by createdAt descending (client-side to be safe)
+                const combined = [...imgList, ...vList, ...sList].sort((a: any, b: any) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeB - timeA;
+                });
 
-                const processedList = imageList.map((item: any) => ({
+                const processedList = combined.map((item: any) => ({
                     ...item,
                     imageUrl: item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : null)
                 })).filter(item => item.imageUrl);
