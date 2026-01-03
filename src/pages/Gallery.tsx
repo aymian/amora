@@ -1,4 +1,4 @@
-import { collection, getDocs, query, orderBy, doc, updateDoc, increment, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, updateDoc, increment, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,9 +39,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
+import { useLiteMode } from "@/contexts/LiteModeContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Gallery() {
     const { user: userData } = useOutletContext<{ user: any }>();
+    const { isLiteMode } = useLiteMode();
     const [searchParams, setSearchParams] = useSearchParams();
     const urlSearch = searchParams.get("search") || "";
     const [images, setImages] = useState<any[]>([]);
@@ -63,9 +66,10 @@ export default function Gallery() {
     useEffect(() => {
         const fetchImages = async () => {
             try {
+                const maxAssets = isLiteMode ? 8 : 40;
                 const fetchCollection = async (collName: string) => {
                     try {
-                        const q = query(collection(db, collName), orderBy("createdAt", "desc"));
+                        const q = query(collection(db, collName), orderBy("createdAt", "desc"), limit(maxAssets));
                         const snap = await getDocs(q);
                         if (!snap.empty) {
                             return snap.docs
@@ -73,13 +77,12 @@ export default function Gallery() {
                                 .filter((item: any) => item.inExplore !== false);
                         }
 
-                        // Fallback if empty (missing fields)
-                        const q2 = query(collection(db, collName));
+                        const q2 = query(collection(db, collName), limit(maxAssets));
                         const snap2 = await getDocs(q2);
                         return snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     } catch (err) {
                         console.warn(`Gallery fetch failed for ${collName}, falling back`, err);
-                        const q3 = query(collection(db, collName));
+                        const q3 = query(collection(db, collName), limit(maxAssets));
                         const snap3 = await getDocs(q3);
                         return snap3.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     }
@@ -94,10 +97,9 @@ export default function Gallery() {
                         fetchCollection("gallery_videos"),
                         fetchCollection("shorts")
                     ]);
-                    imageList = [...vList, ...sList];
+                    imageList = [...vList, ...sList].slice(0, maxAssets);
                 }
 
-                // Apply thumbnail logic for video assets
                 const processedList = imageList.map((item: any) => ({
                     ...item,
                     imageUrl: item.imageUrl || (item.videoUrl ? item.videoUrl.replace(/\.[^/.]+$/, ".jpg") : null)
@@ -107,12 +109,12 @@ export default function Gallery() {
             } catch (error) {
                 console.error("Error fetching gallery:", error);
             } finally {
-                setTimeout(() => setLoading(false), 600);
+                setLoading(false);
             }
         };
 
         fetchImages();
-    }, []);
+    }, [isLiteMode]);
 
     // Respond to URL search changes
     useEffect(() => {
@@ -365,7 +367,13 @@ export default function Gallery() {
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                        <div key={i} className="aspect-[9/16] rounded-[3rem] bg-white/[0.02] border border-white/5 animate-pulse" />
+                        <div key={i} className="space-y-4">
+                            <Skeleton className="aspect-[9/16] w-full rounded-[3rem] bg-white/[0.02] border border-white/5" />
+                            <div className="px-6 space-y-2">
+                                <Skeleton className="h-4 w-24 bg-white/5" />
+                                <Skeleton className="h-6 w-48 bg-white/5" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : images.length > 0 ? (

@@ -5,6 +5,8 @@ import { collection, query, orderBy, getDocs, limit, where } from "firebase/fire
 import { db } from "@/lib/firebase";
 import { ArrowLeft, Heart, Eye, Play, Zap } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLiteMode } from "@/contexts/LiteModeContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ExploreItem {
     id: string;
@@ -18,24 +20,26 @@ interface ExploreItem {
 
 export default function Explore() {
     const navigate = useNavigate();
+    const { isLiteMode, isDataSaver } = useLiteMode();
     const [items, setItems] = useState<ExploreItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchExploreContent = async () => {
             try {
+                const maxAssets = isLiteMode ? 8 : 30;
                 // Fetch Images (Relaxed Query)
                 const imagesQuery = query(
                     collection(db, "gallery_images"),
                     orderBy("views", "desc"),
-                    limit(30)
+                    limit(maxAssets)
                 );
 
                 // Fetch Videos (Relaxed Query)
                 const videosQuery = query(
                     collection(db, "gallery_videos"),
                     orderBy("views", "desc"),
-                    limit(30)
+                    limit(maxAssets)
                 );
 
                 const [imagesSnap, videosSnap] = await Promise.all([
@@ -103,8 +107,14 @@ export default function Explore() {
             {/* Grid */}
             {loading ? (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[...Array(8)].map((_, i) => (
-                        <div key={i} className="aspect-[9/16] bg-white/5 rounded-2xl animate-pulse" />
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <div key={i} className="space-y-3">
+                            <Skeleton className="aspect-[9/16] w-full rounded-2xl bg-white/5" />
+                            <div className="space-y-1">
+                                <Skeleton className="h-3 w-16 bg-white/5" />
+                                <Skeleton className="h-4 w-32 bg-white/5" />
+                            </div>
+                        </div>
                     ))}
                 </div>
             ) : (
@@ -126,12 +136,17 @@ export default function Explore() {
                                         className="w-full h-full object-cover"
                                         muted
                                         loop
-                                        onMouseOver={e => e.currentTarget.play()}
-                                        onMouseOut={e => e.currentTarget.pause()}
+                                        onMouseOver={e => !isLiteMode && !isDataSaver && e.currentTarget.play()}
+                                        onMouseOut={e => !isLiteMode && !isDataSaver && e.currentTarget.pause()}
                                     />
                                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center">
                                         <Play className="w-3 h-3 text-white" />
                                     </div>
+                                    {(isLiteMode || isDataSaver) && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
+                                            <Play className="w-8 h-8 text-white/40 fill-current" />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <img

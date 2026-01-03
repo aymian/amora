@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useMood } from "@/contexts/MoodContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { useLiteMode } from "@/contexts/LiteModeContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface StoryVideo {
   id: string;
@@ -32,25 +34,25 @@ export function StoriesSection() {
   const [stories, setStories] = useState<StoryVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const { transitionDuration, colorIntensity } = useMood();
+  const { isLiteMode, isDataSaver } = useLiteMode();
 
   useEffect(() => {
     const fetchStories = async () => {
       try {
         let docs: any[] = [];
         try {
-          const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(10));
+          const q = query(collection(db, "shorts"), orderBy("createdAt", "desc"), limit(isLiteMode ? 4 : 10));
           const querySnapshot = await getDocs(q);
           docs = querySnapshot.docs;
         } catch (err) {
           console.warn("Ordered stories fetch failed, falling back to unsorted", err);
-          const q2 = query(collection(db, "shorts"), limit(10));
+          const q2 = query(collection(db, "shorts"), limit(isLiteMode ? 4 : 10));
           const querySnapshot2 = await getDocs(q2);
           docs = querySnapshot2.docs;
         }
 
         if (docs.length === 0) {
-          // Check if it was purely empty even without sort
-          const q3 = query(collection(db, "shorts"), limit(10));
+          const q3 = query(collection(db, "shorts"), limit(isLiteMode ? 4 : 10));
           const snap3 = await getDocs(q3);
           docs = snap3.docs;
         }
@@ -77,7 +79,7 @@ export function StoriesSection() {
     };
 
     fetchStories();
-  }, []);
+  }, [isLiteMode]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -137,11 +139,14 @@ export function StoriesSection() {
           <div className="shrink-0 w-[calc((100vw-1400px)/2+1.5rem)] hidden 2xl:block" />
 
           {loading ? (
-            <div className="w-full flex items-center justify-center h-64">
-              <div className="flex flex-col items-center gap-4">
-                <Activity className="w-8 h-8 text-[#e9c49a] animate-pulse" />
-                <span className="text-[10px] uppercase tracking-widest text-[#e9c49a]/60 font-bold">Synchronizing Artifacts...</span>
-              </div>
+            <div className="flex gap-6">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="shrink-0 w-80 sm:w-96 space-y-4">
+                  <Skeleton className="aspect-video w-full rounded-2xl bg-white/5" />
+                  <Skeleton className="h-4 w-24 bg-white/5 rounded" />
+                  <Skeleton className="h-8 w-48 bg-white/5 rounded" />
+                </div>
+              ))}
             </div>
           ) : stories.length === 0 ? (
             <div className="w-full flex items-center justify-center h-64">
@@ -168,12 +173,21 @@ export function StoriesSection() {
                   <video
                     src={story.videoUrl}
                     poster={story.imageUrl}
-                    autoPlay
+                    autoPlay={!isLiteMode && !isDataSaver}
                     muted
                     loop
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
+
+                  {/* Play Icon for Lite Mode */}
+                  {(isLiteMode || isDataSaver) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all z-10">
+                      <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center">
+                        <Play className="w-5 h-5 text-white ml-1 fill-current" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Noise Overlay */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')]" />

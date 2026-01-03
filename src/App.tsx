@@ -60,6 +60,7 @@ import Explore from "./pages/Explore";
 import DashboardLayout from "./components/layout/DashboardLayout";
 
 import { LiteModeProvider } from "@/contexts/LiteModeContext";
+import { OfflineFallback } from "@/components/layout/OfflineFallback";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <LiteModeProvider>
       <TooltipProvider>
+        <OfflineFallback />
         <Toaster />
         <Sonner />
         <BrowserRouter>
