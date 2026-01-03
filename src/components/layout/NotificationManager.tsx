@@ -81,26 +81,37 @@ export function NotificationManager() {
                         if (lastMsgAt > lastCheck.current && chatData.lastSenderId !== user.uid) {
                             lastCheck.current = lastMsgAt;
 
+                            // Extract sender info
+                            const senderInfo = chatData.participantDetails?.[chatData.lastSenderId] || { name: "Citizen", photo: "/favicon.svg" };
+                            const notificationTitle = `${senderInfo.name} • Resonance`;
+                            const notificationIcon = senderInfo.photo || "/favicon.svg";
+
                             if (Notification.permission === "granted") {
                                 try {
                                     const registration = await navigator.serviceWorker.getRegistration();
                                     if (registration && 'showNotification' in registration) {
-                                        registration.showNotification("New Resonance Signal", {
+                                        registration.showNotification(notificationTitle, {
                                             body: lastMsg,
-                                            icon: "/favicon.svg",
+                                            icon: notificationIcon,
                                             badge: "/favicon.svg",
                                             tag: "message-sync",
                                             data: { url: "/messages" }
                                         });
                                     } else {
-                                        new Notification("New Resonance Signal", { body: lastMsg, icon: "/favicon.svg" });
+                                        new Notification(notificationTitle, {
+                                            body: lastMsg,
+                                            icon: notificationIcon
+                                        });
                                     }
                                 } catch (err) {
-                                    new Notification("New Resonance Signal", { body: lastMsg, icon: "/favicon.svg" });
+                                    new Notification(notificationTitle, {
+                                        body: lastMsg,
+                                        icon: notificationIcon
+                                    });
                                 }
                             }
 
-                            toast("New Transmission", {
+                            toast(notificationTitle, {
                                 description: lastMsg,
                                 action: {
                                     label: "View",
