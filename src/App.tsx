@@ -24,6 +24,9 @@ import UserProfile from "./pages/UserProfile";
 import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Transactions from "./pages/Transactions";
+import Settings from "./pages/Settings";
+import History from "./pages/History";
+import Favorites from "./pages/Favorites";
 import CreateShort from "./pages/admin/CreateShort";
 import MoodsUpload from "./pages/admin/MoodsUpload";
 import HappyUpload from "./pages/admin/HappyUpload";
@@ -105,6 +108,9 @@ const App = () => (
               <Route path="/help" element={<Help />} />
               <Route path="/upload" element={<Upload />} />
               <Route path="/explore" element={<Explore />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/favorites" element={<Favorites />} />
               <Route path="/:username" element={<UserProfile />} />
             </Route>
 

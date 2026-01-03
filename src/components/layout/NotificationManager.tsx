@@ -61,12 +61,14 @@ export function NotificationManager() {
             where("participants", "array-contains", user.uid)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+            for (const change of snapshot.docChanges()) {
                 if (change.type === "modified") {
                     const chatData = change.doc.data();
                     const lastMsg = chatData.lastMessage;
-                    const lastMsgAt = chatData.lastMessageAt?.toMillis() || 0;
+                    const lastMsgAt = chatData.lastMessageAt?.toMillis() || Date.now();
+
+                    console.log(`[NotificationManager] Change detected. LastMsgAt: ${lastMsgAt}, LastCheck: ${lastCheck.current}, Sender: ${chatData.lastSenderId}`);
 
                     // Only notify if it's a new message and NOT from the current user
                     // Note: participantDetails contains names. We need to find who sent it.
@@ -77,14 +79,33 @@ export function NotificationManager() {
                         // Update last check time
                         lastCheck.current = lastMsgAt;
 
-                        // Trigger browser notification if not focusing on the page or just as a redundancy
+                        // Trigger browser notification
                         if (Notification.permission === "granted") {
-                            new Notification("New Resonance Signal", {
-                                body: lastMsg,
-                                icon: "/favicon.svg",
-                                tag: "message-sync",
-                                silent: false,
-                            });
+                            console.log("[NotificationManager] Triggering browser notification for:", lastMsg);
+                            try {
+                                const registration = await navigator.serviceWorker.getRegistration();
+                                if (registration && 'showNotification' in registration) {
+                                    registration.showNotification("New Resonance Signal", {
+                                        body: lastMsg,
+                                        icon: "/favicon.svg",
+                                        badge: "/favicon.svg",
+                                        tag: "message-sync",
+                                        data: { url: "/messages" }
+                                    });
+                                } else {
+                                    new Notification("New Resonance Signal", {
+                                        body: lastMsg,
+                                        icon: "/favicon.svg",
+                                    });
+                                }
+                            } catch (err) {
+                                console.error("[NotificationManager] Error showing notification:", err);
+                                // Fallback
+                                new Notification("New Resonance Signal", {
+                                    body: lastMsg,
+                                    icon: "/favicon.svg",
+                                });
+                            }
                         }
 
                         // Also show an in-app toast
@@ -97,7 +118,7 @@ export function NotificationManager() {
                         });
                     }
                 }
-            });
+            }
         });
 
         return () => unsubscribe();
