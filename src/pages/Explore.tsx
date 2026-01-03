@@ -136,17 +136,13 @@ export default function Explore() {
                                         className="w-full h-full object-cover"
                                         muted
                                         loop
-                                        onMouseOver={e => !isLiteMode && !isDataSaver && e.currentTarget.play()}
-                                        onMouseOut={e => !isLiteMode && !isDataSaver && e.currentTarget.pause()}
+                                        onMouseOver={e => e.currentTarget.play()}
+                                        onMouseOut={e => e.currentTarget.pause()}
                                     />
                                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center">
                                         <Play className="w-3 h-3 text-white" />
                                     </div>
-                                    {(isLiteMode || isDataSaver) && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all">
-                                            <Play className="w-8 h-8 text-white/40 fill-current" />
-                                        </div>
-                                    )}
+
                                 </div>
                             ) : (
                                 <img

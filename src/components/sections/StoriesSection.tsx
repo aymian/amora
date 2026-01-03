@@ -173,21 +173,14 @@ export function StoriesSection() {
                   <video
                     src={story.videoUrl}
                     poster={story.imageUrl}
-                    autoPlay={!isLiteMode && !isDataSaver}
+                    autoPlay
                     muted
                     loop
                     playsInline
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
 
-                  {/* Play Icon for Lite Mode */}
-                  {(isLiteMode || isDataSaver) && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-all z-10">
-                      <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center">
-                        <Play className="w-5 h-5 text-white ml-1 fill-current" />
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Noise Overlay */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')]" />

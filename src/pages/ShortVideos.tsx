@@ -70,13 +70,6 @@ const VideoItem = ({
 
     useEffect(() => {
         if (isActive && videoRef.current) {
-            if (isLiteMode || isDataSaver) {
-                if (!isManualPlay) {
-                    videoRef.current.pause();
-                    return;
-                }
-            }
-
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.catch(() => {
@@ -87,16 +80,11 @@ const VideoItem = ({
             }
         } else {
             videoRef.current?.pause();
-            setIsManualPlay(false);
         }
-    }, [isActive, isLiteMode, isDataSaver, isManualPlay]);
+    }, [isActive]);
 
     const handleVideoClick = () => {
-        if (isLiteMode || isDataSaver) {
-            setIsManualPlay(!isManualPlay);
-        } else {
-            setIsMuted(!isMuted);
-        }
+        setIsMuted(!isMuted);
     };
 
     const handleLike = async () => {
@@ -133,19 +121,7 @@ const VideoItem = ({
                 onClick={handleVideoClick}
             />
 
-            {/* Lite Mode Play Overlay */}
-            {(isLiteMode || isDataSaver) && !isManualPlay && isActive && (
-                <div
-                    className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-10 cursor-pointer"
-                    onClick={() => setIsManualPlay(true)}
-                >
-                    <div className="w-20 h-20 rounded-full bg-[#e9c49a] flex items-center justify-center shadow-[0_0_30px_rgba(233,196,154,0.4)]">
-                        <Play className="w-10 h-10 text-black fill-current ml-1" />
-                    </div>
-                    <p className="mt-6 text-[10px] uppercase tracking-[0.4em] text-[#e9c49a] font-bold">Tap to Stream</p>
-                    <div className="mt-2 text-[9px] text-white/40 uppercase tracking-widest bg-white/5 px-3 py-1 rounded-full border border-white/10">Lite Mode Active</div>
-                </div>
-            )}
+
 
             {/* Left Side Interface - Desktop & Mobile */}
             <div className="absolute inset-y-0 left-0 z-20 p-6 md:p-12 flex flex-col justify-between pointer-events-none w-full md:w-[45%]">
