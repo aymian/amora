@@ -89,9 +89,9 @@ export default function Apply() {
             });
             setSubmitted(true);
             window.scrollTo(0, 0);
-        } catch (error) {
-            console.error(error);
-            toast.error("Submission failed. Please try again.");
+        } catch (error: any) {
+            console.error("Firestore submission error:", error);
+            toast.error(`Submission failed: ${error.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
