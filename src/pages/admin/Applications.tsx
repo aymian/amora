@@ -26,12 +26,19 @@ export default function AdminApplications() {
     const fetchApps = async () => {
         setLoading(true);
         try {
-            const q = query(collection(db, "applications"), orderBy("createdAt", "desc"));
+            // Removing orderBy temporarily to check if index/field issue
+            const q = query(collection(db, "applications"));
             const snap = await getDocs(q);
-            setApps(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to fetch applications");
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Sort manually if needed or just show as is
+            setApps(data.sort((a: any, b: any) => {
+                const dateA = a.createdAt?.seconds || 0;
+                const dateB = b.createdAt?.seconds || 0;
+                return dateB - dateA;
+            }));
+        } catch (error: any) {
+            console.error("Firestore Error:", error);
+            toast.error(`Failed to fetch: ${error.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
@@ -101,8 +108,8 @@ export default function AdminApplications() {
                                     <div className="flex items-center gap-3">
                                         <h3 className="text-xl font-bold">{app.fullName}</h3>
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${app.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-500' :
-                                                app.status === 'rejected' ? 'bg-red-500/20 text-red-500' :
-                                                    'bg-yellow-500/20 text-yellow-500'
+                                            app.status === 'rejected' ? 'bg-red-500/20 text-red-500' :
+                                                'bg-yellow-500/20 text-yellow-500'
                                             }`}>{app.status}</span>
                                         <span className="text-xs text-white/30 font-mono">
                                             {app.createdAt?.seconds ? format(new Date(app.createdAt.seconds * 1000), 'MMM d, h:mm a') : 'Just now'}
