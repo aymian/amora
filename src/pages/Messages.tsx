@@ -185,7 +185,8 @@ export default function Messages() {
 
             await setDoc(doc(db, "conversations", activeChat.id), {
                 lastMessage: text,
-                lastMessageAt: serverTimestamp()
+                lastMessageAt: serverTimestamp(),
+                lastSenderId: userData.id
             }, { merge: true });
         } catch (error) {
             console.error("Transmission failed:", error);

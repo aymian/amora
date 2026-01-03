@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -33,6 +34,7 @@ if (typeof window !== "undefined") {
     });
 }
 export const storage = getStorage(app);
+export const messaging = typeof window !== "undefined" ? getMessaging(app) : null;
 
 // Initialize Analytics
 export let analytics: any;

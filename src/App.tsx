@@ -61,6 +61,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 
 import { LiteModeProvider } from "@/contexts/LiteModeContext";
 import { OfflineFallback } from "@/components/layout/OfflineFallback";
+import { NotificationManager } from "@/components/layout/NotificationManager";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
     <LiteModeProvider>
       <TooltipProvider>
         <OfflineFallback />
+        <NotificationManager />
         <Toaster />
         <Sonner />
         <BrowserRouter>
