@@ -13,12 +13,10 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const ROLES = {
-    "Executive & Operations": ["Platform Manager", "Executive Secretary"],
-    "Payments & Security": ["Payment Verifier", "Trust & Safety Analyst"],
-    "Content Operations": ["Image Content Manager", "Short-Video Manager", "Mood Content Manager", "Happy Content Curator", "Sad Content Curator", "Music Content Manager"],
-    "Community & Support": ["Community Moderator", "Community Support Agent"],
-    "Speed & Monitoring": ["Queue Manager", "Rapid Response Operator", "Emergency Operator"],
-    "Quality & Analytics": ["Quality Reviewer", "Brand Tone Reviewer", "Performance Analyst"]
+    "Executive & Operations": ["Platform Manager (Only)", "Executive Secretary (Only)"],
+    "Payments & Finance": ["Payment Verifier", "Payment Approver", "Payment Rejector"],
+    "Content & Media": ["Mood Content Uploader", "Short Video Operator", "Visual Asset Manager"],
+    "User Experience & Support": ["User Support Agent"]
 };
 
 export default function Apply() {
