@@ -9,33 +9,40 @@ export function NotificationManager() {
 
     useEffect(() => {
         const handlePermissions = async () => {
-            if (!("Notification" in window)) {
-                console.warn("This browser does not support desktop notifications");
-                return;
-            }
+            if (!("Notification" in window)) return;
 
             if (Notification.permission === "default") {
-                const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                    new Notification("Resonance Synchronized", {
-                        body: "Planetary directorial link established. You are now receiving live transmissions.",
-                        icon: "/favicon.svg"
-                    });
+                try {
+                    const permission = await Notification.requestPermission();
+                    if (permission === "granted") {
+                        new Notification("Resonance Synchronized", {
+                            body: "Planetary directorial link established.",
+                            icon: "/favicon.svg"
+                        });
+                    }
+                } catch (e) {
+                    console.error("Permission request failed", e);
                 }
             }
         };
 
         handlePermissions();
 
-        // Aggressive re-prompting/informing (The "User Cannot Disable It" logic)
+        // Aggressive but dismissible inform/prompt
         const enforcementInterval = setInterval(() => {
-            if (Notification.permission !== "granted") {
-                toast.error("⚠️ CRITICAL: RESONANCE LINK SEVERED", {
-                    description: "Priority Protocol 1: Amora requires push notification authorization for real-time directorial sync. Your status is currently 'DE-SYNCHRONIZED'.",
-                    duration: Infinity,
-                    id: "resonance-enforcement", // Prevents stacking
+            if (!("Notification" in window)) return;
+
+            // Only prompt if not granted AND not already shown in this session (or allowed to dismiss)
+            const hasDismissed = sessionStorage.getItem("dismissed_resonance_prompt");
+
+            if (Notification.permission !== "granted" && !hasDismissed) {
+                toast.error("⚠️ RESONANCE LINK SEVERED", {
+                    description: "Enable notifications for real-time directorial sync. Status: 'DE-SYNCHRONIZED'.",
+                    duration: 10000, // Not Infinity anymore, give them a break
+                    id: "resonance-enforcement",
+                    onDismiss: () => sessionStorage.setItem("dismissed_resonance_prompt", "true"),
                     action: {
-                        label: "ESTABLISH LINK",
+                        label: "FIX SYNC",
                         onClick: () => {
                             if (Notification.permission === "default") {
                                 handlePermissions();
@@ -46,83 +53,71 @@ export function NotificationManager() {
                     }
                 });
             }
-        }, 60000); // Check every minute to stay aggressive as requested
+        }, 60000);
 
         return () => clearInterval(enforcementInterval);
     }, []);
 
     useEffect(() => {
-        const user = auth.currentUser;
-        if (!user) return;
+        let unsubscribe: (() => void) | undefined;
 
-        // Listen for new messages across all conversations participant is in
-        const q = query(
-            collection(db, "conversations"),
-            where("participants", "array-contains", user.uid)
-        );
+        const authUnsub = auth.onAuthStateChanged((user) => {
+            if (unsubscribe) unsubscribe();
+            if (!user) return;
 
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            for (const change of snapshot.docChanges()) {
-                if (change.type === "modified") {
-                    const chatData = change.doc.data();
-                    const lastMsg = chatData.lastMessage;
-                    const lastMsgAt = chatData.lastMessageAt?.toMillis() || Date.now();
+            // Listen for new messages across all conversations participant is in
+            const q = query(
+                collection(db, "conversations"),
+                where("participants", "array-contains", user.uid)
+            );
 
-                    console.log(`[NotificationManager] Change detected. LastMsgAt: ${lastMsgAt}, LastCheck: ${lastCheck.current}, Sender: ${chatData.lastSenderId}`);
+            unsubscribe = onSnapshot(q, async (snapshot) => {
+                for (const change of snapshot.docChanges()) {
+                    if (change.type === "modified") {
+                        const chatData = change.doc.data();
+                        const lastMsg = chatData.lastMessage;
+                        const lastMsgAt = chatData.lastMessageAt?.toMillis() || Date.now();
 
-                    // Only notify if it's a new message and NOT from the current user
-                    // Note: participantDetails contains names. We need to find who sent it.
-                    // In a real app, we'd check the latest message doc, but here we can approximate
-                    // if lastMessageAt is very recent.
+                        if (lastMsgAt > lastCheck.current && chatData.lastSenderId !== user.uid) {
+                            lastCheck.current = lastMsgAt;
 
-                    if (lastMsgAt > lastCheck.current && chatData.lastSenderId !== user.uid) {
-                        // Update last check time
-                        lastCheck.current = lastMsgAt;
-
-                        // Trigger browser notification
-                        if (Notification.permission === "granted") {
-                            console.log("[NotificationManager] Triggering browser notification for:", lastMsg);
-                            try {
-                                const registration = await navigator.serviceWorker.getRegistration();
-                                if (registration && 'showNotification' in registration) {
-                                    registration.showNotification("New Resonance Signal", {
-                                        body: lastMsg,
-                                        icon: "/favicon.svg",
-                                        badge: "/favicon.svg",
-                                        tag: "message-sync",
-                                        data: { url: "/messages" }
-                                    });
-                                } else {
-                                    new Notification("New Resonance Signal", {
-                                        body: lastMsg,
-                                        icon: "/favicon.svg",
-                                    });
+                            if (Notification.permission === "granted") {
+                                try {
+                                    const registration = await navigator.serviceWorker.getRegistration();
+                                    if (registration && 'showNotification' in registration) {
+                                        registration.showNotification("New Resonance Signal", {
+                                            body: lastMsg,
+                                            icon: "/favicon.svg",
+                                            badge: "/favicon.svg",
+                                            tag: "message-sync",
+                                            data: { url: "/messages" }
+                                        });
+                                    } else {
+                                        new Notification("New Resonance Signal", { body: lastMsg, icon: "/favicon.svg" });
+                                    }
+                                } catch (err) {
+                                    new Notification("New Resonance Signal", { body: lastMsg, icon: "/favicon.svg" });
                                 }
-                            } catch (err) {
-                                console.error("[NotificationManager] Error showing notification:", err);
-                                // Fallback
-                                new Notification("New Resonance Signal", {
-                                    body: lastMsg,
-                                    icon: "/favicon.svg",
-                                });
                             }
-                        }
 
-                        // Also show an in-app toast
-                        toast("New Incoming Transmission", {
-                            description: lastMsg,
-                            action: {
-                                label: "View",
-                                onClick: () => window.location.href = "/messages"
-                            }
-                        });
+                            toast("New Transmission", {
+                                description: lastMsg,
+                                action: {
+                                    label: "View",
+                                    onClick: () => window.location.href = "/messages"
+                                }
+                            });
+                        }
                     }
                 }
-            }
+            });
         });
 
-        return () => unsubscribe();
-    }, [auth.currentUser]);
+        return () => {
+            authUnsub();
+            if (unsubscribe) unsubscribe();
+        };
+    }, []);
 
     return null;
 }

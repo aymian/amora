@@ -49,6 +49,15 @@ export default function UserProfile() {
 
     // 1. Auth Check & Fetch Profile
     useEffect(() => {
+        // System paths redirection if they somehow hit this wildcard route
+        const systemPaths = ['settings', 'history', 'favorites', 'favourites', 'profile', 'dashboard', 'explore'];
+        const cleanPath = username?.replace('@', '')?.toLowerCase();
+
+        if (cleanPath && systemPaths.includes(cleanPath)) {
+            navigate(`/${cleanPath}`);
+            return;
+        }
+
         const unsubscribe = auth.onAuthStateChanged(async (authUser) => {
             if (authUser) {
                 setCurrentUser(authUser);

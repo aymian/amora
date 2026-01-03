@@ -111,6 +111,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/history" element={<History />} />
               <Route path="/favorites" element={<Favorites />} />
+              <Route path="/favourites" element={<Favorites />} />
               <Route path="/:username" element={<UserProfile />} />
             </Route>
 
