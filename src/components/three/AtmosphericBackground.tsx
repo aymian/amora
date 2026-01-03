@@ -3,36 +3,37 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Points, PointMaterial } from "@react-three/drei";
 import * as THREE from "three";
 import { useMood } from "@/contexts/MoodContext";
+import { useLiteMode } from "@/contexts/LiteModeContext";
 
 function FloatingParticles() {
   const ref = useRef<THREE.Points>(null);
   const { motionSpeed, colorIntensity } = useMood();
-  
+
   const particleCount = 800;
-  
+
   const [positions, sizes] = useMemo(() => {
     const positions = new Float32Array(particleCount * 3);
     const sizes = new Float32Array(particleCount);
-    
+
     for (let i = 0; i < particleCount; i++) {
       positions[i * 3] = (Math.random() - 0.5) * 20;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
       positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
       sizes[i] = Math.random() * 0.5 + 0.1;
     }
-    
+
     return [positions, sizes];
   }, []);
 
   useFrame((state) => {
     if (!ref.current) return;
-    
+
     const time = state.clock.getElapsedTime() * motionSpeed * 0.1;
-    
+
     // Gentle floating motion
     ref.current.rotation.y = time * 0.05;
     ref.current.rotation.x = Math.sin(time * 0.3) * 0.02;
-    
+
     // Breathing effect - subtle pulsation
     const breathe = Math.sin(time * 0.5) * 0.02 + 1;
     ref.current.scale.setScalar(breathe);
@@ -60,14 +61,14 @@ function AmbientOrbs() {
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime() * motionSpeed * 0.3;
-    
+
     if (orbRef1.current) {
       orbRef1.current.position.x = Math.sin(time * 0.3) * 3;
       orbRef1.current.position.y = Math.cos(time * 0.2) * 2;
       const scale1 = 1.5 + Math.sin(time * 0.5) * 0.3;
       orbRef1.current.scale.setScalar(scale1);
     }
-    
+
     if (orbRef2.current) {
       orbRef2.current.position.x = Math.cos(time * 0.25) * 4;
       orbRef2.current.position.y = Math.sin(time * 0.35) * 1.5 - 1;
@@ -99,12 +100,29 @@ function AmbientOrbs() {
 }
 
 export function AtmosphericBackground() {
+  const { isLiteMode } = useLiteMode();
+
+  if (isLiteMode) {
+    return (
+      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="absolute inset-0 bg-[#050505]">
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              background: 'radial-gradient(circle at 20% 30%, #3a2a1a 0%, transparent 50%), radial-gradient(circle at 80% 70%, #1a1a2e 0%, transparent 50%)'
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
       <Canvas
         camera={{ position: [0, 0, 5], fov: 60 }}
-        dpr={[1, 1.5]}
-        gl={{ antialias: true, alpha: true }}
+        dpr={[1, 1.2]} // Slightly lower DPR for better performance even in normal mode
+        gl={{ antialias: false, alpha: true }} // Antialias false for performance
         style={{ background: "transparent" }}
       >
         <fog attach="fog" args={["hsl(240, 15%, 6%)", 5, 20]} />

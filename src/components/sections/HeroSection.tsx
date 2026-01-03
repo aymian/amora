@@ -5,16 +5,22 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLiteMode } from "@/contexts/LiteModeContext";
+
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function HeroSection() {
   const { transitionDuration, motionSpeed } = useMood();
+  const { isLiteMode } = useLiteMode();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [heroImages, setHeroImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isLiteMode) return; // Disable parallax in Lite Mode
+
     const handleMouseMove = (e: MouseEvent) => {
       const x = (e.clientX / window.innerWidth - 0.5) * 30;
       const y = (e.clientY / window.innerHeight - 0.5) * 30;
@@ -23,41 +29,36 @@ export function HeroSection() {
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  }, [isLiteMode]);
 
   useEffect(() => {
     const fetchHeroContent = async () => {
       try {
         setLoading(true);
-        // Helper to fetch documents with fallback for missing createdAt or index
+        // Helper to fetch documents
         const fetchCollection = async (collName: string, max: number) => {
           try {
-            // First try sorted
             const q = query(collection(db, collName), orderBy("createdAt", "desc"), limit(max));
             const snap = await getDocs(q);
             if (!snap.empty) return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            // If empty, try unsorted (maybe no createdAt field or index)
             const q2 = query(collection(db, collName), limit(max));
             const snap2 = await getDocs(q2);
             return snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           } catch (err) {
-            console.warn(`Ordered fetch failed for ${collName}, falling back to unsorted`, err);
             const q3 = query(collection(db, collName), limit(max));
             const snap3 = await getDocs(q3);
             return snap3.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           }
         };
 
-        const imageAssets = await fetchCollection("gallery_images", 4);
-        const videoAssets = await fetchCollection("gallery_videos", 4);
-        const shortAssets = await fetchCollection("shorts", 4);
+        const maxAssets = isLiteMode ? 1 : 4;
+        const imageAssets = await fetchCollection("gallery_images", maxAssets);
+        const videoAssets = isLiteMode ? [] : await fetchCollection("gallery_videos", maxAssets);
+        const shortAssets = isLiteMode ? [] : await fetchCollection("shorts", maxAssets);
 
         let assets = [...imageAssets];
-        if (assets.length < 3) assets = [...assets, ...videoAssets];
-        if (assets.length < 3) assets = [...assets, ...shortAssets];
+        if (!isLiteMode && assets.length < 3) assets = [...assets, ...videoAssets, ...shortAssets];
 
-        // Map to image URLs with Cloudinary thumbnail fallback for videos
         const imageList = assets.map((asset: any) => {
           if (asset.imageUrl) return asset.imageUrl;
           if (asset.videoUrl) return asset.videoUrl.replace(/\.[^/.]+$/, ".jpg");
@@ -72,20 +73,22 @@ export function HeroSection() {
       }
     };
     fetchHeroContent();
-  }, []);
+  }, [isLiteMode]);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 bg-[#050505]">
-      {/* Ambient Glow Effects */}
-      <div
-        className="absolute w-[800px] h-[800px] rounded-full blur-[200px]"
-        style={{
-          top: "10%",
-          left: "20%",
-          background: `radial-gradient(circle, hsla(38, 50%, 50%, 0.08), transparent 70%)`,
-          opacity: 0.6,
-        }}
-      />
+      {/* Ambient Glow Effects - Reduced in Lite Mode */}
+      {!isLiteMode && (
+        <div
+          className="absolute w-[800px] h-[800px] rounded-full blur-[200px]"
+          style={{
+            top: "10%",
+            left: "20%",
+            background: `radial-gradient(circle, hsla(38, 50%, 50%, 0.08), transparent 70%)`,
+            opacity: 0.6,
+          }}
+        />
+      )}
 
       <div className="container mx-auto px-6 relative z-10">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -144,21 +147,26 @@ export function HeroSection() {
           {/* Right Column: Triple Card Layout (Social Story Style) */}
           <div className="relative flex justify-center items-center h-[600px] lg:h-[800px] animate-fade-up [animation-delay:0.4s]">
             {loading ? (
-              <div className="flex flex-col items-center gap-4">
-                <Activity className="w-12 h-12 text-[#e9c49a] animate-pulse" />
-                <span className="text-[10px] uppercase tracking-[0.5em] text-[#e9c49a]/60 font-bold">Initializing Visuals...</span>
+              <div className="relative w-full max-w-lg flex items-center justify-center">
+                <Skeleton className="w-[280px] sm:w-[340px] aspect-[9/16] rounded-[2.5rem] bg-white/5 border border-white/10" />
+                {!isLiteMode && (
+                  <>
+                    <Skeleton className="absolute w-[280px] sm:w-[340px] aspect-[9/16] rounded-[2.5rem] bg-white/5 border border-white/10 -translate-x-12 -rotate-6 opacity-50" />
+                    <Skeleton className="absolute w-[280px] sm:w-[340px] aspect-[9/16] rounded-[2.5rem] bg-white/5 border border-white/10 translate-x-12 rotate-6 opacity-50" />
+                  </>
+                )}
               </div>
             ) : heroImages.length > 0 ? (
               <div className="relative w-full max-w-lg flex items-center justify-center">
                 {/* Background Cards with Parallax/Float */}
-                {heroImages.slice(0, 3).map((img, idx) => {
-                  const offsets = [
+                {(isLiteMode ? heroImages.slice(0, 1) : heroImages.slice(0, 3)).map((img, idx) => {
+                  const offsets = isLiteMode ? [{ x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }] : [
                     { x: -140, y: -20, rotate: -8, scale: 0.9, opacity: 0.8 }, // Left
                     { x: 140, y: 40, rotate: 6, scale: 0.9, opacity: 0.8 },   // Right
                     { x: 0, y: 10, rotate: 0, scale: 1, opacity: 1 },        // Center (Main)
                   ];
 
-                  const pos = offsets[idx];
+                  const pos = offsets[isLiteMode ? 0 : idx];
 
                   return (
                     <motion.div

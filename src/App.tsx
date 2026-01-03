@@ -59,83 +59,87 @@ import ViewArtifact from "./pages/ViewArtifact";
 import Explore from "./pages/Explore";
 import DashboardLayout from "./components/layout/DashboardLayout";
 
+import { LiteModeProvider } from "@/contexts/LiteModeContext";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/signup" element={<Login />} />
-          <Route path="/onboarding" element={<Onboarding />} />
+    <LiteModeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/signup" element={<Login />} />
+            <Route path="/onboarding" element={<Onboarding />} />
 
-          {/* Dashboard Shell - Persistent Layout */}
-          <Route element={<DashboardLayout user={null} />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/images" element={<Gallery />} />
-            <Route path="/short-videos" element={<ShortVideos />} />
-            <Route path="/watch" element={<Watch />} />
-            <Route path="/upgrade" element={<Upgrade />} />
-            <Route path="/payment" element={<Payment />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/create-short" element={<CreateShort />} />
-            <Route path="/moods-uploads" element={<MoodsUpload />} />
-            <Route path="/happy-upload" element={<HappyUpload />} />
-            <Route path="/moods-watch/:id" element={<MoodsWatch />} />
-            <Route path="/ai" element={<AIGuide />} />
-            <Route path="/emotion-ai" element={<EmotionAI />} />
-            <Route path="/happy" element={<Happy />} />
-            <Route path="/sad" element={<Sad />} />
-            <Route path="/updates" element={<Updates />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/:username" element={<UserProfile />} />
-          </Route>
+            {/* Dashboard Shell - Persistent Layout */}
+            <Route element={<DashboardLayout user={null} />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/images" element={<Gallery />} />
+              <Route path="/short-videos" element={<ShortVideos />} />
+              <Route path="/watch" element={<Watch />} />
+              <Route path="/upgrade" element={<Upgrade />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/create-short" element={<CreateShort />} />
+              <Route path="/moods-uploads" element={<MoodsUpload />} />
+              <Route path="/happy-upload" element={<HappyUpload />} />
+              <Route path="/moods-watch/:id" element={<MoodsWatch />} />
+              <Route path="/ai" element={<AIGuide />} />
+              <Route path="/emotion-ai" element={<EmotionAI />} />
+              <Route path="/happy" element={<Happy />} />
+              <Route path="/sad" element={<Sad />} />
+              <Route path="/updates" element={<Updates />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/:username" element={<UserProfile />} />
+            </Route>
 
-          <Route path="/view/:id" element={<ViewArtifact />} />
+            <Route path="/view/:id" element={<ViewArtifact />} />
 
-          <Route path="/video-player" element={<VideoPlayer />} />
-          <Route path="/manager" element={<AdminLogin />} />
-          <Route path="/manager/nexus" element={<AdminNexus />} />
-          <Route path="/admin/nexus/workers" element={<WorkersControlCenter />} />
-          <Route path="/admin/nexus/workers/:id" element={<WorkerProfile />} />
-          <Route path="/manager/upload" element={<MediaUpload />} />
-          <Route path="/manager/contents" element={<Contents />} />
-          <Route path="/manager/image-upload" element={<ImageUpload />} />
-          <Route path="/manager/helps" element={<AdminHelps />} />
-          <Route path="/manager/applications" element={<AdminApplications />} />
-          <Route path="/popup" element={<PopupManager />} />
+            <Route path="/video-player" element={<VideoPlayer />} />
+            <Route path="/manager" element={<AdminLogin />} />
+            <Route path="/manager/nexus" element={<AdminNexus />} />
+            <Route path="/admin/nexus/workers" element={<WorkersControlCenter />} />
+            <Route path="/admin/nexus/workers/:id" element={<WorkerProfile />} />
+            <Route path="/manager/upload" element={<MediaUpload />} />
+            <Route path="/manager/contents" element={<Contents />} />
+            <Route path="/manager/image-upload" element={<ImageUpload />} />
+            <Route path="/manager/helps" element={<AdminHelps />} />
+            <Route path="/manager/applications" element={<AdminApplications />} />
+            <Route path="/popup" element={<PopupManager />} />
 
-          <Route path="/apply" element={<Apply />} />
-          <Route path="/reply" element={<ApplicationReply />} />
+            <Route path="/apply" element={<Apply />} />
+            <Route path="/reply" element={<ApplicationReply />} />
 
-          {/* Worker System Routes */}
-          <Route path="/workers" element={<WorkerLogin />} />
-          <Route path="/workers/login" element={<WorkerLogin />} />
-          <Route path="/workers/signup" element={<WorkerSignup />} />
-          <Route path="/workers/select-role" element={<RoleSelection />} />
-          <Route path="/workers/dashboard" element={<WorkerDashboard />} />
-          <Route path="/workers/payment-verification" element={<PaymentVerification />} />
-          <Route path="/workers/payment-approval" element={<PaymentApproval />} />
-          <Route path="/workers/payment-rejection" element={<PaymentRejection />} />
-          <Route path="/workers/mood-upload" element={<MoodContentUploader />} />
-          <Route path="/workers/upload-short" element={<ShortUpload />} />
+            {/* Worker System Routes */}
+            <Route path="/workers" element={<WorkerLogin />} />
+            <Route path="/workers/login" element={<WorkerLogin />} />
+            <Route path="/workers/signup" element={<WorkerSignup />} />
+            <Route path="/workers/select-role" element={<RoleSelection />} />
+            <Route path="/workers/dashboard" element={<WorkerDashboard />} />
+            <Route path="/workers/payment-verification" element={<PaymentVerification />} />
+            <Route path="/workers/payment-approval" element={<PaymentApproval />} />
+            <Route path="/workers/payment-rejection" element={<PaymentRejection />} />
+            <Route path="/workers/mood-upload" element={<MoodContentUploader />} />
+            <Route path="/workers/upload-short" element={<ShortUpload />} />
 
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <SpeedInsights />
-    </TooltipProvider>
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        <SpeedInsights />
+      </TooltipProvider>
+    </LiteModeProvider>
   </QueryClientProvider>
 );
 

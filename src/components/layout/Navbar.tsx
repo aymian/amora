@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, Zap, ShieldCheck } from "lucide-react";
 import { useMood } from "@/contexts/MoodContext";
+import { useLiteMode } from "@/contexts/LiteModeContext";
 import { Logo } from "@/components/brand/Logo";
 
 const navLinks = [
@@ -16,6 +17,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { transitionDuration } = useMood();
+  const { isLiteMode, isDataSaver, setLiteMode, setDataSaver } = useLiteMode();
 
   return (
     <>
@@ -53,6 +55,26 @@ export function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 mr-2 border-r border-white/10 pr-4">
+              <button
+                onClick={() => setLiteMode(!isLiteMode)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 ${isLiteMode ? 'bg-[#e9c49a] text-black shadow-[0_0_15px_rgba(233,196,154,0.3)]' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                title={isLiteMode ? "Disable Lite Mode" : "Enable Lite Mode (Slow Internet)"}
+              >
+                <Zap className={`w-3.5 h-3.5 ${isLiteMode ? 'fill-current' : ''}`} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Lite</span>
+              </button>
+
+              <button
+                onClick={() => setDataSaver(!isDataSaver)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 ${isDataSaver ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}
+                title={isDataSaver ? "Disable Data Saver" : "Enable Data Saver"}
+              >
+                <ShieldCheck className={`w-3.5 h-3.5 ${isDataSaver ? 'fill-current' : ''}`} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Saver</span>
+              </button>
+            </div>
+
             <Button
               variant="ghost"
               className="hidden sm:flex text-white/50 hover:text-[#e9c49a] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
@@ -104,6 +126,23 @@ export function Navbar() {
                 {link.name}
               </a>
             ))}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-white/10">
+              <button
+                onClick={() => setLiteMode(!isLiteMode)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 ${isLiteMode ? 'bg-[#e9c49a] text-black' : 'bg-white/5 text-white/50'}`}
+              >
+                <Zap className={`w-4 h-4 ${isLiteMode ? 'fill-current' : ''}`} />
+                <span className="text-xs font-bold uppercase tracking-widest">Lite</span>
+              </button>
+
+              <button
+                onClick={() => setDataSaver(!isDataSaver)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 ${isDataSaver ? 'bg-emerald-500 text-black' : 'bg-white/5 text-white/50'}`}
+              >
+                <ShieldCheck className={`w-4 h-4 ${isDataSaver ? 'fill-current' : ''}`} />
+                <span className="text-xs font-bold uppercase tracking-widest">Saver</span>
+              </button>
+            </div>
             <div className="flex flex-col gap-4 pt-4 border-t border-white/10">
               <Button
                 variant="ghost"

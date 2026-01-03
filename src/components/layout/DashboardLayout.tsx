@@ -49,11 +49,13 @@ import {
     CloudRain,
     Receipt,
     UploadCloud,
+    ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { auth, db } from "@/lib/firebase";
+import { useLiteMode } from "@/contexts/LiteModeContext";
 import {
     collection,
     query,
@@ -91,6 +93,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
     const [localUser, setLocalUser] = useState<any>(user);
     const [localLoading, setLocalLoading] = useState(!user);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { isLiteMode, isDataSaver, setLiteMode, setDataSaver } = useLiteMode();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [allArtifacts, setAllArtifacts] = useState<any[]>([]);
@@ -789,7 +792,34 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                     <Logo className="h-6 w-auto" />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                    {/* Lite Mode & Data Saver Toggles - Adaptive Interface */}
+                    <div className="hidden sm:flex items-center gap-2 mr-2 pr-2 border-r border-white/5">
+                        <button
+                            onClick={() => setLiteMode(!isLiteMode)}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
+                                isLiteMode ? "bg-[#e9c49a] text-black border-[#e9c49a] shadow-[0_0_15px_rgba(233,196,154,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
+                            )}
+                            title={isLiteMode ? "Disable Lite Mode" : "Enable Lite Mode (Slow Internet)"}
+                        >
+                            <Zap className={cn("w-3 h-3", isLiteMode && "fill-current")} />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Lite</span>
+                        </button>
+
+                        <button
+                            onClick={() => setDataSaver(!isDataSaver)}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
+                                isDataSaver ? "bg-emerald-500 text-black border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
+                            )}
+                            title={isDataSaver ? "Disable Data Saver" : "Enable Data Saver"}
+                        >
+                            <ShieldCheck className={cn("w-3 h-3", isDataSaver && "fill-current")} />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Saver</span>
+                        </button>
+                    </div>
+
                     <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-full">
                         <button
                             onClick={() => setIsSearchOpen(true)}
