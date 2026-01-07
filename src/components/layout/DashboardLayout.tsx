@@ -50,7 +50,8 @@ import {
     Receipt,
     UploadCloud,
     ShieldCheck,
-    MoreHorizontal
+    MoreHorizontal,
+    Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -68,7 +69,8 @@ import {
     setDoc,
     serverTimestamp,
     getDoc,
-    getDocs
+    getDocs,
+    updateDoc
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { Logo } from "@/components/brand/Logo";
@@ -612,6 +614,37 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
 
     const menuItems = getMenuItems();
 
+    // Database Migration Tool (Dev/Admin)
+    const handleFixUsernames = async () => {
+        try {
+            toast.loading("Aligning identity protocols...");
+            const usersRef = collection(db, "users");
+            const snapshot = await getDocs(usersRef);
+            let updated = 0;
+
+            const updatePromises = snapshot.docs.map(async (userDoc) => {
+                const data = userDoc.data();
+                if (!data.username && data.email) {
+                    const newUsername = data.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (newUsername) {
+                        await updateDoc(doc(db, "users", userDoc.id), {
+                            username: newUsername
+                        });
+                        updated++;
+                    }
+                }
+            });
+
+            await Promise.all(updatePromises);
+            toast.dismiss();
+            toast.success(`Protocol Alignment Complete: ${updated} identities synchronized.`);
+        } catch (error) {
+            console.error(error);
+            toast.dismiss();
+            toast.error("Protocol Alignment Failed.");
+        }
+    };
+
     const handleLogout = async () => {
         await auth.signOut();
         navigate("/login");
@@ -1108,6 +1141,10 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                 <DropdownMenuItem onClick={() => navigate("/settings")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
                                                     <Settings className="w-4 h-4" />
                                                     <span className="text-[13px]">Settings</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={handleFixUsernames} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
+                                                    <Database className="w-4 h-4" />
+                                                    <span className="text-[13px]">Fix Database</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => navigate("/help")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
                                                     <HelpCircle className="w-4 h-4" />
