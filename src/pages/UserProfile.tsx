@@ -53,6 +53,11 @@ export default function UserProfile() {
         const systemPaths = ['settings', 'history', 'favorites', 'favourites', 'profile', 'dashboard', 'explore'];
         const cleanPath = username?.replace('@', '')?.toLowerCase();
 
+        if (cleanPath === 'messages') {
+            navigate('/message', { replace: true });
+            return;
+        }
+
         if (cleanPath && systemPaths.includes(cleanPath)) {
             navigate(`/${cleanPath}`);
             return;
@@ -367,7 +372,7 @@ export default function UserProfile() {
                             <Share2 className="w-5 h-5" />
                         </Button>
                         {isFollowing && (
-                            <Button onClick={() => navigate('/messages')} variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">
+                            <Button onClick={() => navigate('/message')} variant="outline" className="rounded-full h-12 w-12 border-white/10 bg-white/5 hover:bg-white/10 p-0">
                                 <MessageCircle className="w-5 h-5" />
                             </Button>
                         )}

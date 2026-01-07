@@ -95,7 +95,7 @@ export function NotificationManager() {
                                             icon: notificationIcon,
                                             badge: "/favicon.svg",
                                             tag: "message-sync",
-                                            data: { url: "/messages" }
+                                            data: { url: "/message" }
                                         });
                                     } else {
                                         new Notification(notificationTitle, {
@@ -115,7 +115,7 @@ export function NotificationManager() {
                                 description: lastMsg,
                                 action: {
                                     label: "View",
-                                    onClick: () => window.location.href = "/messages"
+                                    onClick: () => window.location.href = "/message"
                                 }
                             });
                         }

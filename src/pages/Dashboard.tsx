@@ -9,8 +9,14 @@ import {
     Sparkles,
     History,
     Zap,
-    ArrowRight
+    ArrowRight,
+    Plus,
+    Music,
+    X
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { updateDoc, serverTimestamp } from "firebase/firestore";
+import { toast } from "sonner";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -25,6 +31,8 @@ export default function Dashboard() {
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [stories, setStories] = useState<any[]>([]);
+    const [selectedStory, setSelectedStory] = useState<any>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -51,6 +59,17 @@ export default function Dashboard() {
 
                 setHeroes(heroList);
                 setNewReleases(videoItems.slice(0, 6));
+
+                // Fetch Stories
+                const qStories = query(collection(db, "stories"), orderBy("createdAt", "desc"), limit(20));
+                const storySnap = await getDocs(qStories);
+                const fetchedStories = storySnap.docs.map(doc => {
+                    const data = doc.data();
+                    const isSeen = data.viewedBy?.includes(userData.id);
+                    return { id: doc.id, ...data, isSeen };
+                });
+                setStories(fetchedStories);
+
             } catch (err: any) {
                 console.error("Dashboard sync error:", err);
             } finally {
@@ -83,8 +102,67 @@ export default function Dashboard() {
         );
     }
 
+    const handleViewStory = async (story: any) => {
+        if (!userData?.id) return;
+        setSelectedStory(story);
+        if (!story.isSeen) {
+            try {
+                await updateDoc(doc(db, "stories", story.id), {
+                    viewedBy: [...(story.viewedBy || []), userData.id]
+                });
+                setStories(prev => prev.map(s => s.id === story.id ? { ...s, isSeen: true } : s));
+            } catch (err) {
+                console.error("Mark seen failed:", err);
+            }
+        }
+    };
+
     return (
-        <>
+        <div className="space-y-12 pb-20">
+            {/* Stories Section */}
+            <section className="relative px-2">
+                <div className="flex gap-6 overflow-x-auto pb-4 no-scrollbar">
+                    {/* Add Story */}
+                    <div
+                        onClick={() => navigate('/create-story')}
+                        className="flex flex-col items-center gap-3 flex-shrink-0 group cursor-pointer"
+                    >
+                        <div className="relative w-20 h-20 rounded-[2rem] border border-white/10 p-1 group-hover:border-[#e9c49a]/50 transition-all bg-white/[0.02]">
+                            <div className="w-full h-full rounded-[1.8rem] bg-white/5 flex items-center justify-center backdrop-blur-md">
+                                <Plus className="w-8 h-8 text-[#e9c49a]" />
+                            </div>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-widest text-white/20 font-black group-hover:text-white transition-colors">Create</span>
+                    </div>
+
+                    {stories.map((story) => (
+                        <div
+                            key={story.id}
+                            onClick={() => handleViewStory(story)}
+                            className="flex flex-col items-center gap-3 flex-shrink-0 group cursor-pointer"
+                        >
+                            <div className={cn(
+                                "relative w-20 h-20 rounded-[2rem] p-1 transition-all duration-700",
+                                story.isSeen
+                                    ? "border border-white/5 grayscale opacity-50"
+                                    : "border-2 border-[#e9c49a] shadow-[0_0_25px_rgba(233,196,154,0.2)] group-hover:scale-110"
+                            )}>
+                                <Avatar className="w-full h-full rounded-[1.8rem] ring-2 ring-black">
+                                    <AvatarImage src={story.userPhoto || story.mediaUrl} className="object-cover" />
+                                    <AvatarFallback className="bg-white/5 text-xs">{story.userName?.[0]}</AvatarFallback>
+                                </Avatar>
+                                {!story.isSeen && (
+                                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-500 rounded-full border-2 border-black animate-pulse shadow-[0_0_15px_#f59e0b]" />
+                                )}
+                            </div>
+                            <span className={cn(
+                                "text-[10px] uppercase tracking-widest font-black truncate max-w-[80px] transition-colors",
+                                story.isSeen ? "text-white/20" : "text-white/60 group-hover:text-white"
+                            )}>{story.userName || "Citizen"}</span>
+                        </div>
+                    ))}
+                </div>
+            </section>
             {/* Dynamic Hero Banner Section */}
             <section className="relative group rounded-[40px] overflow-hidden aspect-[21/9] flex items-center p-8 lg:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] bg-black">
                 <AnimatePresence mode="wait">
@@ -239,6 +317,81 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
-        </>
+            {/* Story Viewer Modal */}
+            <AnimatePresence>
+                {selectedStory && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4"
+                    >
+                        <div className="relative w-full max-w-lg aspect-[9/16] rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(233,196,154,0.1)] border border-white/10">
+                            {/* Media */}
+                            {selectedStory.mediaType === 'video' ? (
+                                <video
+                                    src={selectedStory.mediaUrl}
+                                    autoPlay
+                                    className="w-full h-full object-cover"
+                                    onEnded={() => setSelectedStory(null)}
+                                />
+                            ) : (
+                                <img src={selectedStory.mediaUrl} className="w-full h-full object-cover" alt="Story" />
+                            )}
+
+                            {/* Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60 p-8 flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full border-2 border-[#e9c49a] p-0.5">
+                                            <Avatar className="w-full h-full rounded-full ring-1 ring-black">
+                                                <AvatarImage src={selectedStory.userPhoto} />
+                                                <AvatarFallback>{selectedStory.userName?.[0]}</AvatarFallback>
+                                            </Avatar>
+                                        </div>
+                                        <div>
+                                            <p className="text-white text-sm font-bold tracking-tight">{selectedStory.userName}</p>
+                                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">
+                                                TRANSMISSION_ACTIVE
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedStory(null)}
+                                        className="w-10 h-10 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h3 className="text-2xl font-display font-light text-white">{selectedStory.title}</h3>
+                                    <p className="text-sm text-white/60 font-light leading-relaxed">{selectedStory.description}</p>
+
+                                    {selectedStory.audioUrl && (
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/10 w-fit backdrop-blur-md">
+                                            <Music className="w-3 h-3 text-[#e9c49a] animate-pulse" />
+                                            <span className="text-[10px] text-white/80 font-bold uppercase tracking-widest">Atmospheric frequency active</span>
+                                            <audio src={selectedStory.audioUrl} autoPlay loop />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="absolute top-4 left-4 right-4 h-1 bg-white/20 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: "100%" }}
+                                    transition={{ duration: selectedStory.mediaType === 'video' ? 15 : 5, ease: "linear" }}
+                                    onAnimationComplete={() => setSelectedStory(null)}
+                                    className="h-full bg-[#e9c49a]"
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }

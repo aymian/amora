@@ -22,7 +22,6 @@ import Upgrade from "./pages/Upgrade";
 import Payment from "./pages/Payment";
 import UserProfile from "./pages/UserProfile";
 import Profile from "./pages/Profile";
-import Messages from "./pages/Messages";
 import Transactions from "./pages/Transactions";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
@@ -61,6 +60,8 @@ import Upload from "./pages/Upload";
 import ViewArtifact from "./pages/ViewArtifact";
 import Explore from "./pages/Explore";
 import DashboardLayout from "./components/layout/DashboardLayout";
+import Message from "./pages/Message";
+import CreateStory from "./pages/CreateStory";
 
 import { LiteModeProvider } from "@/contexts/LiteModeContext";
 import { OfflineFallback } from "@/components/layout/OfflineFallback";
@@ -85,8 +86,14 @@ const App = () => (
             <Route path="/signup" element={<Login />} />
             <Route path="/onboarding" element={<Onboarding />} />
 
+
+
+            {/* Standalone Pages (Full Screen) */}
+            <Route path="/create-story" element={<CreateStory />} />
+
             {/* Dashboard Shell - Persistent Layout */}
             <Route element={<DashboardLayout user={null} />}>
+              <Route path="/message" element={<Message />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/images" element={<Gallery />} />
               <Route path="/short-videos" element={<ShortVideos />} />
@@ -95,7 +102,6 @@ const App = () => (
               <Route path="/payment" element={<Payment />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/messages" element={<Messages />} />
               <Route path="/create-short" element={<CreateShort />} />
               <Route path="/moods-uploads" element={<MoodsUpload />} />
               <Route path="/happy-upload" element={<HappyUpload />} />
@@ -114,6 +120,7 @@ const App = () => (
               <Route path="/favourites" element={<Favorites />} />
               <Route path="/:username" element={<UserProfile />} />
             </Route>
+
 
             <Route path="/view/:id" element={<ViewArtifact />} />
 
@@ -151,7 +158,7 @@ const App = () => (
         <SpeedInsights />
       </TooltipProvider>
     </LiteModeProvider>
-  </QueryClientProvider>
+  </QueryClientProvider >
 );
 
 export default App;

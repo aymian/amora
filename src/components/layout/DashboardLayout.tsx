@@ -49,7 +49,8 @@ import {
     CloudRain,
     Receipt,
     UploadCloud,
-    ShieldCheck
+    ShieldCheck,
+    MoreHorizontal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -468,7 +469,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
     }, [isSearchOpen]);
 
     const getMenuItems = () => {
-        const plan = localUser?.plan || "free";
+        const plan = (localUser?.plan || "free").toLowerCase();
 
         switch (plan) {
             case "free":
@@ -513,41 +514,15 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
             case "pro":
                 return [
                     {
-                        label: "Main",
+                        label: "Primary",
                         items: [
                             { icon: Home, label: "Home", path: "/dashboard" },
                             { icon: Compass, label: "Explore", path: "/explore" },
                             { icon: Image, label: "Images", path: "/images" },
-                            { icon: Sun, label: "Happy Core", path: "/happy" },
-                            { icon: CloudRain, label: "Melancholy Core", path: "/sad" },
-                            { icon: Video, label: "Short Stories", path: "/short-videos" },
                             { icon: Film, label: "Videos", path: "/short-videos" },
-                        ]
-                    },
-                    {
-                        label: "Experience",
-                        items: [
                             { icon: Brain, label: "Emotion AI", path: "/emotion-ai" },
                             { icon: Bot, label: "Neural Core (AI)", path: "/ai" },
-                            { icon: UploadCloud, label: "Upload Artifact", path: "/upload" },
-                        ]
-                    },
-                    {
-                        label: "Social",
-                        items: [
-                            { icon: Heart, label: "Favorites", path: "/favorites" },
-                            { icon: Clock, label: "History", path: "/history" },
-                        ]
-                    },
-                    {
-                        label: "Account",
-                        items: [
-                            { icon: ShieldAlert, label: "Pro Access ✅", path: "/upgrade", special: true },
                             { icon: User, label: "My Profile", path: "/profile" },
-                            { icon: Receipt, label: "Transactions", path: "/transactions" },
-                            { icon: Sparkles, label: "Nexus Updates", path: "/updates" },
-                            { icon: User, label: "Support", path: "/help" },
-                            { icon: Settings, label: "Settings", path: "/settings" },
                         ]
                     }
                 ];
@@ -643,7 +618,24 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans">
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans relative overflow-hidden">
+            {/* Cosmic Background */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1a0f0a] via-[#1f120c] to-[#0a0604]" />
+                <div
+                    className="absolute inset-0 opacity-40 mix-blend-screen"
+                    style={{
+                        backgroundImage: `radial-gradient(1px 1px at 20% 30%, rgba(233, 196, 154, 0.4), transparent),
+                                         radial-gradient(2px 2px at 40% 70%, rgba(255, 200, 124, 0.2), transparent),
+                                         radial-gradient(1.5px 1.5px at 60% 20%, rgba(233, 196, 154, 0.5), transparent),
+                                         radial-gradient(1px 1px at 80% 60%, rgba(233, 196, 154, 0.3), transparent)`,
+                        backgroundSize: '150% 150%',
+                        animation: 'particleFloat 60s linear infinite'
+                    }}
+                />
+                <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-[#e9c49a]/10 rounded-full blur-[150px] animate-pulse" />
+                <div className="absolute bottom-[10%] right-[10%] w-[40%] h-[40%] bg-orange-900/10 rounded-full blur-[120px]" />
+            </div>
 
             {/* Search Overlay - Arbiter Global Indexing Engine */}
             <AnimatePresence>
@@ -931,7 +923,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                 {(notif.type === 'alert' || (notif.type === 'follow_request' && notif.status === 'approved')) && (
                                                     <div className="flex justify-end">
                                                         <button
-                                                            onClick={() => navigate("/messages")}
+                                                            onClick={() => navigate("/message")}
                                                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#e9c49a]/10 text-[#e9c49a] hover:bg-[#e9c49a] hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest"
                                                         >
                                                             <MessageSquare className="w-3.5 h-3.5" /> Start Conversation
@@ -1033,8 +1025,8 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                 {/* Fixed Sidebar */}
                 {!hideSidebar && (
                     <aside className={cn(
-                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#080808] to-[#050505] border-r border-[#e9c49a]/5 pt-8",
-                        isMobileMenuOpen ? "translate-x-0" : (location.pathname === '/messages' ? "-translate-x-full" : "-translate-x-full md:translate-x-0")
+                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#080808]/80 to-[#050505]/80 backdrop-blur-xl border-r border-[#e9c49a]/5 pt-8",
+                        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
                     )}>
                         <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
                             <div className="flex flex-col gap-6">
@@ -1073,10 +1065,10 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#e9c49a] rounded-r-full shadow-[0_0_10px_#e9c49a]" />
                                                         )}
                                                         <item.icon className={cn(
-                                                            "w-4 h-4 transition-all",
+                                                            "w-[25px] h-[23px] transition-all text-white/50 group-hover:text-white",
                                                             isActive || isSpecial ? "text-[#e9c49a] drop-shadow-[0_0_8px_rgba(233,196,154,0.5)]" : "group-hover:text-[#e9c49a]"
                                                         )} />
-                                                        <span className="text-xs font-light tracking-wide">{item.label}</span>
+                                                        <span className="text-[13px] font-light tracking-wide">{item.label}</span>
                                                     </div>
 
                                                     {isLocked && (
@@ -1092,29 +1084,68 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                             </div>
 
                             <div className="space-y-4 pt-8 border-t border-white/5">
-                                <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
-                                    <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
-                                        {localUser?.plan === 'free' ? 'Explorer Status' :
-                                            localUser?.plan === 'pro' ? 'Resonance Tier' :
-                                                localUser?.plan === 'elite' ? 'Elite Sovereign' :
-                                                    localUser?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
-                                    </p>
-                                    <p className="text-[9px] text-white/40 font-light leading-relaxed">
-                                        {localUser?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
-                                            localUser?.plan === 'pro' ? 'Daily synchronization and social resonance active.' :
-                                                localUser?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
-                                                    localUser?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
-                                                        'Welcome to the future of cinematic narrative.'}
-                                    </p>
-                                </div>
+                                {localUser?.plan === 'pro' ? (
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={() => navigate('/upgrade')}
+                                            className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#e9c49a] text-black shadow-lg shadow-[#e9c49a]/10 hover:shadow-[#e9c49a]/20 hover:bg-white transition-all group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <ShieldAlert className="w-[18px] h-[18px]" />
+                                                <span className="text-[13px] font-bold tracking-wide uppercase">Pro Access</span>
+                                            </div>
+                                            <Sparkles className="w-[14px] h-[14px] text-black/50 group-hover:text-black transition-colors" />
+                                        </button>
 
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all group"
-                                >
-                                    <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                    <span className="text-xs font-light">Sign Out</span>
-                                </button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.05] transition-all group">
+                                                    <span className="text-[13px] font-light group-hover:text-[#e9c49a] transition-colors">More</span>
+                                                    <MoreHorizontal className="w-[18px] h-[18px]" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" side="right" className="w-56 bg-[#0A0A0A] border border-white/10 rounded-xl p-2 mb-2 ml-2">
+                                                <DropdownMenuItem onClick={() => navigate("/settings")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
+                                                    <Settings className="w-4 h-4" />
+                                                    <span className="text-[13px]">Settings</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => navigate("/help")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
+                                                    <HelpCircle className="w-4 h-4" />
+                                                    <span className="text-[13px]">Help & Support</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-white/5 my-1" />
+                                                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer text-red-400 focus:text-red-400 transition-colors">
+                                                    <LogOut className="w-4 h-4" />
+                                                    <span className="text-[13px]">Sign Out</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="px-4 py-4 rounded-2xl bg-gradient-to-tr from-[#e9c49a]/10 to-transparent border border-[#e9c49a]/10">
+                                            <p className="text-[10px] text-[#e9c49a] font-bold uppercase tracking-widest mb-1">
+                                                {localUser?.plan === 'free' ? 'Explorer Status' :
+                                                    localUser?.plan === 'elite' ? 'Elite Sovereign' :
+                                                        localUser?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
+                                            </p>
+                                            <p className="text-[9px] text-white/40 font-light leading-relaxed">
+                                                {localUser?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
+                                                    localUser?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
+                                                        localUser?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
+                                                            'Welcome to the future of cinematic narrative.'}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all group"
+                                        >
+                                            <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            <span className="text-xs font-light">Sign Out</span>
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </aside>
@@ -1122,8 +1153,8 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
 
                 {/* Main Content Area */}
                 <main className={cn(
-                    "flex-1 overflow-y-auto bg-[#050505] custom-scrollbar relative",
-                    !hideSidebar && location.pathname !== '/messages' && "md:ml-[240px]"
+                    "flex-1 overflow-y-auto bg-transparent custom-scrollbar relative z-10",
+                    !hideSidebar && "md:ml-[240px]"
                 )}>
                     <div className={cn(
                         "p-6 lg:p-10 mx-auto space-y-10 relative min-h-full",
