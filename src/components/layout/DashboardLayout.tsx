@@ -58,6 +58,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { auth, db } from "@/lib/firebase";
 import { useLiteMode } from "@/contexts/LiteModeContext";
+import { usePresence } from "@/hooks/usePresence";
 import {
     collection,
     query,
@@ -104,6 +105,9 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
     const [pendingPayment, setPendingPayment] = useState<any>(null);
+
+    // Presence
+    usePresence(localUser?.id);
 
     // Listen for pending resonance payments
     useEffect(() => {
@@ -319,52 +323,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
     };
     // --------------------------
 
-    // Temporal Pulse Logic for Free Citizens
-    const [timerPhase, setTimerPhase] = useState<'access' | 'upgrade' | null>(null);
-    const [timeLeft, setTimeLeft] = useState(0);
 
-    useEffect(() => {
-        if (localUser?.plan !== 'pro' && localUser?.plan !== 'elite' && localUser?.plan !== 'creator' && localUser?.plan !== 'free') {
-            // Wait for sync
-            if (localLoading) return;
-        }
-
-        if (localUser?.plan !== 'free') {
-            setTimerPhase(null);
-            return;
-        }
-
-        const tick = () => {
-            let phase = localStorage.getItem('amora_timer_phase') as 'access' | 'upgrade' | null;
-            let targetStr = localStorage.getItem('amora_timer_target');
-            let target = targetStr ? parseInt(targetStr) : 0;
-            let now = Date.now();
-
-            // Safety Check: If the stored target is vastly larger than possible (e.g. from the old 3h logic)
-            // or if we simply want to force the 20s reset for the user.
-            const maxPossible = 25 * 60 * 60 * 1000; // 25 hours max
-            const diff = target - now;
-
-            if (!phase || !targetStr || now > target || diff > maxPossible || (phase === 'access' && diff > 5 * 60 * 60 * 1000)) {
-                // Determine next phase
-                const newPhase = phase === 'access' ? 'upgrade' : 'access';
-                const duration = newPhase === 'access' ? 5 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-
-                phase = newPhase;
-                target = Date.now() + duration;
-
-                localStorage.setItem('amora_timer_phase', phase);
-                localStorage.setItem('amora_timer_target', target.toString());
-            }
-
-            setTimerPhase(phase);
-            setTimeLeft(Math.max(0, Math.floor((target - now) / 1000)));
-        };
-
-        tick();
-        const interval = setInterval(tick, 1000);
-        return () => clearInterval(interval);
-    }, [localUser?.plan]);
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -713,7 +672,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                 <div
                                                     key={item.id}
                                                     onClick={() => {
-                                                        const isPhaseLocked = localUser?.plan === 'free' && timerPhase === 'upgrade';
+                                                        const isPhaseLocked = false;
                                                         if (isPhaseLocked && item.path !== '/upgrade') {
                                                             toast.error("Temporal Access Locked: Upgrade to continue exploration.");
                                                             return;
@@ -812,99 +771,83 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
             </AnimatePresence>
 
             {/* Top Navbar */}
-            <header className="fixed top-0 left-0 right-0 h-16 z-50 glass border-b border-white/5 px-6 flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                    <Logo className="h-6 w-auto" />
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {/* Lite Mode & Data Saver Toggles - Adaptive Interface */}
-                    <div className="hidden sm:flex items-center gap-2 mr-2 pr-2 border-r border-white/5">
-                        <button
-                            onClick={() => setLiteMode(!isLiteMode)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
-                                isLiteMode ? "bg-[#e9c49a] text-black border-[#e9c49a] shadow-[0_0_15px_rgba(233,196,154,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
-                            )}
-                            title={isLiteMode ? "Disable Lite Mode" : "Enable Lite Mode (Slow Internet)"}
-                        >
-                            <Zap className={cn("w-3 h-3", isLiteMode && "fill-current")} />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Lite</span>
-                        </button>
-
-                        <button
-                            onClick={() => setDataSaver(!isDataSaver)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
-                                isDataSaver ? "bg-emerald-500 text-black border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
-                            )}
-                            title={isDataSaver ? "Disable Data Saver" : "Enable Data Saver"}
-                        >
-                            <ShieldCheck className={cn("w-3 h-3", isDataSaver && "fill-current")} />
-                            <span className="text-[9px] font-bold uppercase tracking-wider">Saver</span>
-                        </button>
+            {!location.pathname.startsWith('/message') && location.pathname !== '/short-videos' && (
+                <header className="fixed top-0 left-0 right-0 h-16 z-50 glass border-b border-white/5 px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-8">
+                        <Logo className="h-6 w-auto" />
                     </div>
 
-                    <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-full">
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
-                        >
-                            <Search className="w-5 h-5 group-active:scale-90 transition-transform" />
-                        </button>
-
-                        {(localUser?.plan === 'pro' || localUser?.plan === 'elite' || localUser?.plan === 'creator') && (
+                    <div className="flex items-center gap-3">
+                        {/* Mobile: Minimal Header */}
+                        <div className="md:hidden flex items-center gap-4">
                             <button
-                                onClick={() => navigate("/messages")}
-                                className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
+                                onClick={() => setIsSearchOpen(true)}
+                                className="p-2 text-white/60 hover:text-white"
                             >
-                                <Send className="w-5 h-5 transition-transform group-hover:scale-110" />
-                                {unreadMessageCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#e9c49a] text-black text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(233,196,154,0.4)] animate-pulse">
-                                        {unreadMessageCount}
-                                    </span>
-                                )}
+                                <Search className="w-5 h-5" />
                             </button>
-                        )}
+                            <button
+                                className="p-2 text-white/60 hover:text-white"
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            >
+                                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            </button>
+                        </div>
 
-                        {(localUser?.plan === 'free' && timerPhase) && (
-                            <div className={cn(
-                                "flex items-center gap-3 px-4 py-1.5 rounded-full border transition-all duration-500",
-                                timerPhase === 'access'
-                                    ? "bg-white/[0.02] border-white/5"
-                                    : "bg-red-500/10 border-red-500/20 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                            )}>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[7px] uppercase tracking-[0.2em] font-bold text-white/30 leading-none mb-0.5">
-                                        {timerPhase === 'access' ? 'Free Access' : 'Upgrade Required'}
-                                    </span>
-                                    <span className={cn(
-                                        "text-[10px] font-mono font-bold tracking-wider leading-none",
-                                        timerPhase === 'access' ? "text-[#e9c49a]" : "text-red-400"
-                                    )}>
-                                        {formatTime(timeLeft)}
-                                    </span>
-                                </div>
-                                <div className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center border",
-                                    timerPhase === 'access' ? "bg-white/5 border-white/10" : "bg-red-500 text-white border-transparent"
-                                )}>
-                                    <Clock className={cn("w-3.5 h-3.5", timerPhase === 'access' ? "text-white/40" : "animate-spin-slow")} />
-                                </div>
-                                {timerPhase === 'upgrade' && (
+                        {/* Desktop: Full Controls */}
+                        <div className="hidden md:flex items-center gap-3">
+                            <div className="flex items-center gap-2 mr-2 pr-2 border-r border-white/5">
+                                <button
+                                    onClick={() => setLiteMode(!isLiteMode)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
+                                        isLiteMode ? "bg-[#e9c49a] text-black border-[#e9c49a] shadow-[0_0_15px_rgba(233,196,154,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
+                                    )}
+                                    title={isLiteMode ? "Disable Lite Mode" : "Enable Lite Mode (Slow Internet)"}
+                                >
+                                    <Zap className={cn("w-3 h-3", isLiteMode && "fill-current")} />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider">Lite</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setDataSaver(!isDataSaver)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-300 border",
+                                        isDataSaver ? "bg-emerald-500 text-black border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.2)]" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"
+                                    )}
+                                    title={isDataSaver ? "Disable Data Saver" : "Enable Data Saver"}
+                                >
+                                    <ShieldCheck className={cn("w-3 h-3", isDataSaver && "fill-current")} />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider">Saver</span>
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-full">
+                                <button
+                                    onClick={() => setIsSearchOpen(true)}
+                                    className="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
+                                >
+                                    <Search className="w-5 h-5 group-active:scale-90 transition-transform" />
+                                </button>
+
+                                {(localUser?.plan === 'pro' || localUser?.plan === 'elite' || localUser?.plan === 'creator') && (
                                     <button
-                                        onClick={() => navigate("/upgrade")}
-                                        className="ml-1 px-3 py-1 bg-red-500 text-white text-[8px] uppercase font-bold tracking-widest rounded-full hover:bg-white hover:text-black transition-all"
+                                        onClick={() => navigate("/messages")}
+                                        className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all group"
                                     >
-                                        Sync Now
+                                        <Send className="w-5 h-5 transition-transform group-hover:scale-110" />
+                                        {unreadMessageCount > 0 && (
+                                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-[#e9c49a] text-black text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(233,196,154,0.4)] animate-pulse">
+                                                {unreadMessageCount}
+                                            </span>
+                                        )}
                                     </button>
                                 )}
-                            </div>
-                        )}
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all">
+                                <button
+                                    onClick={() => navigate('/notifications')}
+                                    className="relative w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] transition-all"
+                                >
                                     <Bell className="w-5 h-5" />
                                     {notifications.filter(n => n.status === 'pending').length > 0 && (
                                         <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 shadow-[0_0_10px_rgba(239,68,68,0.4)] animate-pulse">
@@ -912,155 +855,84 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                         </span>
                                     )}
                                 </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-80 bg-[#080808]/90 backdrop-blur-3xl border-[#e9c49a]/10 p-4 rounded-[2rem] shadow-2xl space-y-4">
-                                <div className="flex items-center justify-between px-2 mb-2">
-                                    <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-white/20">Identity Alerts</span>
-                                    <span className="text-[10px] uppercase font-bold text-[#e9c49a]">{notifications.length} Nodes</span>
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar space-y-2">
-                                    {notifications.length > 0 ? (
-                                        notifications.map((notif) => (
-                                            <div key={notif.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 group hover:bg-white/[0.04] transition-all">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="w-8 h-8 rounded-xl border border-white/5">
-                                                        <AvatarImage src={notif.senderPhoto} />
-                                                        <AvatarFallback className="bg-white/5 text-[8px]">{notif.senderName?.[0]}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-medium text-white/80 leading-tight">
-                                                            <span className="font-bold text-white">{notif.senderName}</span>
-                                                            {notif.type === 'follow_request' ? " requested resonance access." : ` ${notif.message}`}
-                                                        </p>
-                                                        <p className="text-[8px] text-white/20 uppercase font-bold tracking-widest mt-1">
-                                                            {notif.createdAt?.seconds ? new Date(notif.createdAt.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                {notif.type === 'follow_request' && notif.status === 'pending' && (
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button
-                                                            onClick={() => handleDecline(notif)}
-                                                            className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
-                                                        >
-                                                            <X className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleApprove(notif)}
-                                                            className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
-                                                        >
-                                                            <Check className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                                {(notif.type === 'alert' || (notif.type === 'follow_request' && notif.status === 'approved')) && (
-                                                    <div className="flex justify-end">
-                                                        <button
-                                                            onClick={() => navigate("/message")}
-                                                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#e9c49a]/10 text-[#e9c49a] hover:bg-[#e9c49a] hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest"
-                                                        >
-                                                            <MessageSquare className="w-3.5 h-3.5" /> Start Conversation
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="py-8 text-center space-y-3">
-                                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto">
-                                                <Bell className="w-4 h-4 text-white/10" />
-                                            </div>
-                                            <p className="text-[10px] text-white/20 italic font-light">No active frequencies detected.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    <div className="h-8 w-[1px] bg-white/5 mx-2" />
-
-                    {/* Shadcn Dropdown Profile */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <div className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all group">
-                                <Avatar className="w-8 h-8 rounded-full ring-1 ring-white/10 group-hover:ring-[#e9c49a]/30 transition-all">
-                                    <AvatarImage src={localUser?.photoURL} />
-                                    <AvatarFallback className="bg-[#8b6544] text-[10px] uppercase">
-                                        {localUser?.fullName?.charAt(0) || (localLoading ? "..." : "U")}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="hidden lg:block text-left mr-1">
-                                    <p className="text-[11px] font-medium text-white/80 leading-tight truncate max-w-[100px]">
-                                        {localUser?.fullName || (localLoading ? "Synchronizing..." : "Citizen")}
-                                    </p>
-                                    <p className={cn(
-                                        "text-[9px] uppercase tracking-widest font-bold",
-                                        localUser?.plan === 'pro' ? "text-[#e9c49a]" :
-                                            localUser?.plan === 'elite' ? "text-[#d4af37]" :
-                                                localUser?.plan === 'creator' ? "text-purple-400" : "text-white/40"
-                                    )}>
-                                        {localLoading ? "Indexing Status" :
-                                            localUser?.plan === 'pro' ? "Pro Verified" :
-                                                localUser?.plan === 'elite' ? "Elite Sovereign" :
-                                                    localUser?.plan === 'creator' ? "Master Creator" : "Free Explorer"}
-                                    </p>
-                                </div>
-                                <ChevronDown className="w-3 h-3 text-white/20 group-hover:text-white transition-colors mr-2" />
                             </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-56 bg-[#080808] border-[#e9c49a]/10 text-white p-2 rounded-2xl" align="end" sideOffset={10}>
-                            <DropdownMenuLabel className="font-light text-white/40 text-[10px] uppercase tracking-[0.2em] px-3 py-2">Account Control</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuItem onClick={() => navigate("/profile")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
-                                <Users className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
-                                <span className="text-sm font-light">Public Profile</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate("/dashboard")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
-                                <Home className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
-                                <span className="text-sm font-light">Dashboard</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
-                                <Settings className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
-                                <span className="text-sm font-light">Billing & Plan</span>
-                            </DropdownMenuItem>
-                            {localUser?.plan !== 'creator' && (
-                                <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#e9c49a]/10 hover:bg-[#e9c49a]/20 focus:bg-[#e9c49a]/20 cursor-pointer transition-all group mt-1">
-                                    <Crown className="w-4 h-4 text-[#e9c49a]" />
-                                    <span className="text-sm font-medium text-[#e9c49a]">
-                                        {localUser?.plan === 'free' ? "Upgrade to Pro" :
-                                            localUser?.plan === 'pro' ? "Upgrade to Elite" : "Unlock Creator Toolset"}
-                                    </span>
-                                </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator className="bg-white/5 mt-1" />
-                            <DropdownMenuItem
-                                onClick={handleLogout}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 focus:bg-red-500/10 text-red-400 cursor-pointer transition-all group"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                <span className="text-sm font-light">Sign Out</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
 
-                    <button
-                        className="md:hidden p-2 text-white/60 hover:text-white"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    >
-                        {isMobileMenuOpen ? <X /> : <Menu />}
-                    </button>
-                </div>
-            </header>
+                            <div className="h-8 w-[1px] bg-white/5 mx-2" />
+
+                            {/* Shadcn Dropdown Profile */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition-all group">
+                                        <Avatar className="w-8 h-8 rounded-full ring-1 ring-white/10 group-hover:ring-[#e9c49a]/30 transition-all">
+                                            <AvatarImage src={localUser?.photoURL} />
+                                            <AvatarFallback className="bg-[#8b6544] text-[10px] uppercase">
+                                                {localUser?.fullName?.charAt(0) || (localLoading ? "..." : "U")}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="hidden lg:block text-left mr-1">
+                                            <p className="text-[11px] font-medium text-white/80 leading-tight truncate max-w-[100px]">
+                                                {localUser?.fullName || (localLoading ? "Synchronizing..." : "Citizen")}
+                                            </p>
+                                            <p className={cn(
+                                                "text-[9px] uppercase tracking-widest font-bold",
+                                                localUser?.plan === 'pro' ? "text-[#e9c49a]" :
+                                                    localUser?.plan === 'elite' ? "text-[#d4af37]" :
+                                                        localUser?.plan === 'creator' ? "text-purple-400" : "text-white/40"
+                                            )}>
+                                                {localLoading ? "Indexing Status" :
+                                                    localUser?.plan === 'pro' ? "Pro Verified" :
+                                                        localUser?.plan === 'elite' ? "Elite Sovereign" :
+                                                            localUser?.plan === 'creator' ? "Master Creator" : "Free Explorer"}
+                                            </p>
+                                        </div>
+                                        <ChevronDown className="w-3 h-3 text-white/20 group-hover:text-white transition-colors mr-2" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56 bg-[#080808] border-[#e9c49a]/10 text-white p-2 rounded-2xl" align="end" sideOffset={10}>
+                                    <DropdownMenuLabel className="font-light text-white/40 text-[10px] uppercase tracking-[0.2em] px-3 py-2">Account Control</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-white/5" />
+                                    <DropdownMenuItem onClick={() => navigate("/profile")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                                        <Users className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
+                                        <span className="text-sm font-light">Public Profile</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate("/dashboard")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                                        <Home className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
+                                        <span className="text-sm font-light">Dashboard</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 focus:bg-white/5 cursor-pointer transition-all group">
+                                        <Settings className="w-4 h-4 text-white/40 group-hover:text-[#e9c49a] transition-colors" />
+                                        <span className="text-sm font-light">Billing & Plan</span>
+                                    </DropdownMenuItem>
+                                    {localUser?.plan !== 'creator' && (
+                                        <DropdownMenuItem onClick={() => navigate("/upgrade")} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#e9c49a]/10 hover:bg-[#e9c49a]/20 focus:bg-[#e9c49a]/20 cursor-pointer transition-all group mt-1">
+                                            <Crown className="w-4 h-4 text-[#e9c49a]" />
+                                            <span className="text-sm font-medium text-[#e9c49a]">
+                                                {localUser?.plan === 'free' ? "Upgrade to Pro" :
+                                                    localUser?.plan === 'pro' ? "Upgrade to Elite" : "Unlock Creator Toolset"}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator className="bg-white/5 mt-1" />
+                                    <DropdownMenuItem
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-red-500/10 focus:bg-red-500/10 text-red-400 cursor-pointer transition-all group"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        <span className="text-sm font-light">Sign Out</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+                </header>
+            )}
 
             <div className="flex flex-1 pt-16 h-screen overflow-hidden relative">
 
                 {/* Fixed Sidebar */}
+                {/* Fixed Sidebar (Desktop Only) */}
                 {!hideSidebar && (
-                    <aside className={cn(
-                        "fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] transform transition-all duration-500 ease-in-out z-40 bg-gradient-to-b from-[#080808]/80 to-[#050505]/80 backdrop-blur-xl border-r border-[#e9c49a]/5 pt-8",
-                        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-                    )}>
+                    <aside className="hidden md:block fixed top-16 left-0 w-[240px] h-[calc(100vh-64px)] z-40 bg-gradient-to-b from-[#080808]/80 to-[#050505]/80 backdrop-blur-xl border-r border-[#e9c49a]/5 pt-8">
                         <div className="flex flex-col h-full px-4 pb-8 justify-between overflow-y-auto custom-scrollbar">
                             <div className="flex flex-col gap-6">
                                 {getMenuItems().map((group: any) => (
@@ -1075,7 +947,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                 <button
                                                     key={item.label}
                                                     onClick={() => {
-                                                        const isLockedCurrent = localUser?.plan === 'free' && timerPhase === 'upgrade';
+                                                        const isLockedCurrent = false; // logic removed
                                                         if (isLockedCurrent && item.path !== '/upgrade') {
                                                             toast.error("Protocol Locked: Complete synchronization to regain access.");
                                                             return;
@@ -1089,8 +961,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                             : isLocked
                                                                 ? "opacity-50 cursor-not-allowed grayscale"
                                                                 : "text-white/40 hover:text-white hover:bg-white/[0.02]",
-                                                        isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10",
-                                                        (localUser?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => item.path.startsWith(p))) && "grayscale opacity-30 pointer-events-none"
+                                                        isSpecial && !isActive && "text-[#e9c49a] bg-[#e9c49a]/5 border border-[#e9c49a]/10"
                                                     )}
                                                 >
                                                     <div className="flex items-center gap-3">
@@ -1129,34 +1000,6 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                             </div>
                                             <Sparkles className="w-[14px] h-[14px] text-black/50 group-hover:text-black transition-colors" />
                                         </button>
-
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-white/[0.05] transition-all group">
-                                                    <span className="text-[13px] font-light group-hover:text-[#e9c49a] transition-colors">More</span>
-                                                    <MoreHorizontal className="w-[18px] h-[18px]" />
-                                                </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" side="right" className="w-56 bg-[#0A0A0A] border border-white/10 rounded-xl p-2 mb-2 ml-2">
-                                                <DropdownMenuItem onClick={() => navigate("/settings")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
-                                                    <Settings className="w-4 h-4" />
-                                                    <span className="text-[13px]">Settings</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={handleFixUsernames} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
-                                                    <Database className="w-4 h-4" />
-                                                    <span className="text-[13px]">Fix Database</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => navigate("/help")} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 focus:bg-white/5 cursor-pointer text-white/60 focus:text-white transition-colors">
-                                                    <HelpCircle className="w-4 h-4" />
-                                                    <span className="text-[13px]">Help & Support</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator className="bg-white/5 my-1" />
-                                                <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer text-red-400 focus:text-red-400 transition-colors">
-                                                    <LogOut className="w-4 h-4" />
-                                                    <span className="text-[13px]">Sign Out</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
                                     </div>
                                 ) : (
                                     <>
@@ -1167,20 +1010,9 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                                         localUser?.plan === 'creator' ? 'Master Architect' : 'Citizen Status'}
                                             </p>
                                             <p className="text-[9px] text-white/40 font-light leading-relaxed">
-                                                {localUser?.plan === 'free' ? 'Unlock the full potential of cinematic immersion.' :
-                                                    localUser?.plan === 'elite' ? 'You are among our most exclusive contributors.' :
-                                                        localUser?.plan === 'creator' ? 'Your creativity is the heart of Amora.' :
-                                                            'Welcome to the future of cinematic narrative.'}
+                                                {localUser?.plan === 'free' ? 'Unlock full potential.' : 'Welcome to the future.'}
                                             </p>
                                         </div>
-
-                                        <button
-                                            onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/50 hover:text-red-400 hover:bg-red-400/5 transition-all group"
-                                        >
-                                            <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                            <span className="text-xs font-light">Sign Out</span>
-                                        </button>
                                     </>
                                 )}
                             </div>
@@ -1188,14 +1020,88 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                     </aside>
                 )}
 
+                {/* Mobile Full Screen Menu Overlay */}
+                 <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 z-[100] bg-[#050505] flex flex-col pt-20 px-6 pb-6 md:hidden overflow-y-auto"
+                        >
+                             {/* Close Button */}
+                            <button 
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 border border-white/10 text-white/60"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+
+                            <div className="flex items-center gap-4 mb-8">
+                                <Avatar className="w-16 h-16 rounded-full border-2 border-[#e9c49a]/20">
+                                    <AvatarImage src={localUser?.photoURL} />
+                                    <AvatarFallback>{localUser?.fullName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">{localUser?.fullName}</h3>
+                                    <p className="text-sm text-[#e9c49a] tracking-widest uppercase font-bold text-[10px]">
+                                        {localUser?.plan || "Free"} Protocol
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 space-y-8">
+                                {getMenuItems().map((group: any) => (
+                                    <div key={group.label} className="space-y-3">
+                                        <h4 className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-bold ml-2">{group.label}</h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {group.items.map((item: any) => (
+                                                <button
+                                                    key={item.label}
+                                                    onClick={() => {
+                                                        if (!item.locked) {
+                                                            navigate(item.path);
+                                                            setIsMobileMenuOpen(false);
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border transition-all",
+                                                        location.pathname === item.path
+                                                            ? "bg-[#e9c49a] border-[#e9c49a] text-black"
+                                                            : "bg-white/[0.03] border-white/5 text-white/60 hover:bg-white/[0.08]"
+                                                    )}
+                                                >
+                                                    <item.icon className={cn("w-6 h-6", location.pathname === item.path ? "text-black" : "text-white/80")} />
+                                                    <span className="text-xs font-medium">{item.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                             <div className="pt-8 mt-4 border-t border-white/5">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-red-500/10 text-red-400 font-bold tracking-widest uppercase text-xs"
+                                >
+                                    <LogOut className="w-4 h-4" /> Sign Out
+                                </button>
+                             </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Main Content Area */}
                 <main className={cn(
                     "flex-1 overflow-y-auto bg-transparent custom-scrollbar relative z-10",
                     !hideSidebar && "md:ml-[240px]"
                 )}>
                     <div className={cn(
-                        "p-6 lg:p-10 mx-auto space-y-10 relative min-h-full",
-                        hideSidebar ? "w-full max-w-none px-0 py-0" : "max-w-7xl"
+                        "mx-auto relative min-h-full",
+                        (location.pathname.startsWith('/message') || location.pathname === '/short-videos') ? "p-0 h-full w-full max-w-none" : "p-6 lg:p-10 space-y-10 max-w-7xl",
+                        hideSidebar && "w-full max-w-none px-0 py-0"
                     )}>
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -1204,61 +1110,13 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.3 }}
-                                className="w-full"
+                                className={cn("w-full", location.pathname.startsWith('/message') && "h-full")}
                             >
                                 <Outlet context={{ user: localUser, loading: localLoading, toggleSidebar: () => setIsMobileMenuOpen(!isMobileMenuOpen) }} />
                             </motion.div>
                         </AnimatePresence>
 
-                        {/* Orbital Upgrade Blocker - Absolute Phase Lock */}
-                        <AnimatePresence>
-                            {(localUser?.plan === 'free' && timerPhase === 'upgrade' && !['/upgrade', '/payment'].some(p => location.pathname.startsWith(p))) && (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-[#050505]/80 backdrop-blur-2xl rounded-[3rem] overflow-hidden"
-                                >
-                                    <motion.div
-                                        initial={{ scale: 0.9, y: 20, opacity: 0 }}
-                                        animate={{ scale: 1, y: 0, opacity: 1 }}
-                                        transition={{ type: 'spring', damping: 20 }}
-                                        className="w-full max-w-lg bg-white/[0.02] border border-white/10 rounded-[3rem] p-12 text-center space-y-8 relative shadow-2xl overflow-hidden"
-                                    >
-                                        {/* Background Effects */}
-                                        <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 blur-[100px] -z-10" />
-                                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#e9c49a]/5 blur-[100px] -z-10" />
 
-                                        <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto relative">
-                                            <div className="absolute inset-0 rounded-full border border-red-500/30 animate-ping opacity-20" />
-                                            <Lock className="w-10 h-10 text-red-500" />
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <h2 className="text-3xl font-display font-light tracking-tight text-white/90">Temporal Access <span className="text-red-400 italic">Locked</span></h2>
-                                            <p className="text-white/30 text-sm font-light leading-relaxed">
-                                                Your 20-second immersion window has finished. To maintain archival frequency and access the complete planetary registry, you must synchronize with a premium protocol.
-                                            </p>
-                                        </div>
-
-                                        <div className="flex flex-col gap-4">
-                                            <Button
-                                                onClick={() => navigate("/upgrade")}
-                                                className="h-16 rounded-2xl bg-[#e9c49a] text-black font-bold uppercase tracking-[0.2em] text-[10px] hover:bg-white transition-all shadow-xl group"
-                                            >
-                                                Sync Identity Protocol <ArrowLeft className="w-4 h-4 ml-2 rotate-180 group-hover:translate-x-1 transition-transform" />
-                                            </Button>
-                                            <div className="flex items-center justify-between px-6 py-4 rounded-xl bg-white/5 border border-white/5">
-                                                <span className="text-[10px] uppercase tracking-widest text-white/20 font-bold">Resync Available In</span>
-                                                <span className="text-sm font-mono font-bold text-red-400">{formatTime(timeLeft)}</span>
-                                            </div>
-                                        </div>
-
-                                        <p className="text-[9px] uppercase tracking-[0.4em] text-white/10 font-bold">Identity Registry // Phase v4.0.21</p>
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </div>
 
                     {/* Subtle Background Accent */}
@@ -1374,7 +1232,7 @@ export function DashboardLayout({ user, hideSidebar = false }: DashboardLayoutPr
             </AnimatePresence>
 
             {/* Mobile Bottom Navigation */}
-            <MobileBottomNav />
+            {!location.pathname.startsWith('/message') && location.pathname !== '/short-videos' && <MobileBottomNav />}
 
             <style>{`
         .glass {

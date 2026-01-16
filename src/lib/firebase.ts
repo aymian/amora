@@ -23,8 +23,9 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Enable offline persistence
-if (typeof window !== "undefined") {
+const isSecureContext = window.location.hostname === 'localhost' || window.location.protocol === 'https:';
+
+if (typeof window !== "undefined" && isSecureContext) {
     enableMultiTabIndexedDbPersistence(db).catch((err) => {
         if (err.code === 'failed-precondition') {
             console.warn('Firestore persistence failed: Multiple tabs open');
@@ -33,8 +34,17 @@ if (typeof window !== "undefined") {
         }
     });
 }
+
 export const storage = getStorage(app);
-export const messaging = typeof window !== "undefined" ? getMessaging(app) : null;
+export let messaging: any = null;
+
+if (typeof window !== "undefined" && isSecureContext) {
+    try {
+        messaging = getMessaging(app);
+    } catch (error) {
+        console.warn('Firebase Messaging not supported in this context:', error);
+    }
+}
 
 // Initialize Analytics
 export let analytics: any;

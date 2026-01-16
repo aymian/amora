@@ -28,34 +28,9 @@ export function NotificationManager() {
 
         handlePermissions();
 
-        // Aggressive but dismissible inform/prompt
-        const enforcementInterval = setInterval(() => {
-            if (!("Notification" in window)) return;
 
-            // Only prompt if not granted AND not already shown in this session (or allowed to dismiss)
-            const hasDismissed = sessionStorage.getItem("dismissed_resonance_prompt");
 
-            if (Notification.permission !== "granted" && !hasDismissed) {
-                toast.error("⚠️ RESONANCE LINK SEVERED", {
-                    description: "Enable notifications for real-time directorial sync. Status: 'DE-SYNCHRONIZED'.",
-                    duration: 10000, // Not Infinity anymore, give them a break
-                    id: "resonance-enforcement",
-                    onDismiss: () => sessionStorage.setItem("dismissed_resonance_prompt", "true"),
-                    action: {
-                        label: "FIX SYNC",
-                        onClick: () => {
-                            if (Notification.permission === "default") {
-                                handlePermissions();
-                            } else {
-                                window.open("https://support.google.com/chrome/answer/3220216", "_blank");
-                            }
-                        }
-                    }
-                });
-            }
-        }, 60000);
 
-        return () => clearInterval(enforcementInterval);
     }, []);
 
     useEffect(() => {

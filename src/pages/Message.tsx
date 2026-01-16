@@ -14,7 +14,9 @@ import {
     Home,
     Menu,
     X,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Check,
+    CheckCheck
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useOutletContext } from "react-router-dom";
@@ -35,7 +37,8 @@ import {
     limit,
     getDocs,
     Timestamp,
-    setDoc
+    setDoc,
+    increment
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -50,6 +53,7 @@ interface User {
     email?: string;
     bio?: string;
     status?: string;
+    lastSeen?: any;
 }
 
 interface Message {
@@ -69,6 +73,8 @@ interface Conversation {
     updatedAt: any;
     otherUser: User;
     unread?: boolean;
+    unreadCounts?: { [key: string]: number };
+    typing?: { [key: string]: boolean };
 }
 
 interface Story {
@@ -128,6 +134,13 @@ const Message = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<User[]>([]);
     const [searching, setSearching] = useState(false);
+
+    // Typing State
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [isLocalTyping, setIsLocalTyping] = useState(false);
+
+    // Derived State for other user typing
+    const isOtherUserTyping = selectedConv?.typing?.[selectedConv?.otherUser?.uid || ''] || false;
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -207,6 +220,23 @@ const Message = () => {
         return () => unsubscribe();
     }, [currentUser?.id, isMobile]);
 
+    // 1.5 Sync Selected Conversation & Listen for Real-time Presence/Typing
+    useEffect(() => {
+        if (!selectedConv || conversations.length === 0) return;
+
+        const freshConv = conversations.find(c => c.id === selectedConv.id);
+        if (freshConv) {
+            // Only update if there are meaningful changes to avoid loops, 
+            // but for typing/presence we want React to re-render.
+            // We use JSON stringify for a cheap deep compare or just set it.
+            // To prevent cursor jumping if input is inside, be careful. 
+            // Luckily input state is separate.
+            if (JSON.stringify(freshConv) !== JSON.stringify(selectedConv)) {
+                setSelectedConv(freshConv);
+            }
+        }
+    }, [conversations, selectedConv?.id]); // Depend on conversations (which updates from snapshot)
+
     // 2. Fetch Messages for Selected Conversation
     useEffect(() => {
         if (!selectedConv?.id) {
@@ -229,6 +259,40 @@ const Message = () => {
 
         return () => unsubscribe();
     }, [selectedConv?.id]);
+
+    // 2.5 Mark Messages as Read & Update Typing Status
+    useEffect(() => {
+        const markAsRead = async () => {
+            if (!selectedConv?.id || !currentUser?.id || messages.length === 0) return;
+
+            const unreadMessages = messages.filter(
+                m => !m.read && m.senderId !== currentUser.id
+            );
+
+            if (unreadMessages.length > 0) {
+                unreadMessages.forEach(async (msg) => {
+                    try {
+                        await updateDoc(doc(db, `conversations/${selectedConv.id}/messages`, msg.id), {
+                            read: true,
+                            readAt: serverTimestamp()
+                        });
+                    } catch (e) {
+                        console.error("Error marking read:", e);
+                    }
+                });
+
+                // Reset Unread Count for Me
+                try {
+                    await updateDoc(doc(db, "conversations", selectedConv.id), {
+                        [`unreadCounts.${currentUser.id}`]: 0
+                    });
+                } catch (e) {
+                    console.error("Error resetting counts:", e);
+                }
+            }
+        };
+        markAsRead();
+    }, [messages, selectedConv?.id, currentUser?.id]);
 
     // 3. Fetch Stories
     useEffect(() => {
@@ -275,7 +339,9 @@ const Message = () => {
                 lastMessage: text,
                 lastMessageSenderId: currentUser.id,
                 lastMessageAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
+                updatedAt: serverTimestamp(),
+                [`unreadCounts.${selectedConv.otherUser.uid || selectedConv.otherUser.id}`]: increment(1),
+                [`typing.${currentUser.id}`]: false // Stop typing on send
             });
 
         } catch (err) {
@@ -405,6 +471,18 @@ const Message = () => {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const formatLastSeen = (timestamp: any) => {
+        if (!timestamp) return "Offline";
+        const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+        const diff = Date.now() - date.getTime();
+        const minutes = Math.floor(diff / 60000);
+
+        if (minutes < 2) return "Active Now";
+        if (minutes < 60) return `Active ${minutes}m ago`;
+        if (minutes < 1440) return `Active ${Math.floor(minutes / 60)}h ago`;
+        return `Last seen ${date.toLocaleDateString()}`;
+    };
+
     return (
         <div className="flex h-full w-full overflow-hidden text-white relative font-sans">
 
@@ -417,20 +495,24 @@ const Message = () => {
                 )}
             >
                 {/* Header */}
-                <div className="p-8 pb-4 flex items-center justify-between">
+                {/* Header */}
+                <div className="p-6 pt-12 md:p-8 md:pb-4 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-light text-white tracking-tight">Messages</h1>
-                        <p className="text-[#e9c49a]/60 text-xs uppercase tracking-widest mt-1 font-medium">Neural Feed</p>
+                        <h1 className="text-3xl font-display font-light text-white tracking-tight">Messages</h1>
+                        {/* <p className="text-[#e9c49a]/60 text-xs uppercase tracking-widest mt-1 font-medium">Neural Feed</p> */}
                     </div>
                     <div className="flex gap-2">
                         <button
                             onClick={() => setIsNewChatModalOpen(true)}
                             className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] hover:bg-white/5 transition-all"
                         >
-                            <Plus className="w-5 h-5" />
+                            <Search className="w-5 h-5" />
                         </button>
-                        <button className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                            <Menu className="w-5 h-5" />
+                        <button
+                            onClick={() => setIsNewChatModalOpen(true)}
+                            className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-[#e9c49a] hover:bg-white/5 transition-all"
+                        >
+                            <Plus className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
@@ -516,12 +598,24 @@ const Message = () => {
                                                 {formatTime(conv.updatedAt)}
                                             </span>
                                         </div>
-                                        <p className={cn(
-                                            "text-sm truncate font-light",
-                                            selectedConv?.id === conv.id ? "text-white/60" : "text-white/40 group-hover:text-white/60"
-                                        )}>
-                                            {conv.lastMessageSenderId === currentUser?.id ? "You: " : ""}{conv.lastMessage}
-                                        </p>
+                                        <div className="flex justify-between items-center">
+                                            <p className={cn(
+                                                "text-sm truncate font-light flex-1 pr-4",
+                                                selectedConv?.id === conv.id ? "text-white/60" : "text-white/40 group-hover:text-white/60",
+                                                conv.unreadCounts?.[currentUser?.id || ''] && "font-medium text-white"
+                                            )}>
+                                                {conv.typing?.[conv.otherUser.uid || '']
+                                                    ? <span className="text-[#e9c49a] animate-pulse">Typing...</span>
+                                                    : <>{conv.lastMessageSenderId === currentUser?.id ? "You: " : ""}{conv.lastMessage}</>
+                                                }
+                                            </p>
+                                            {/* Unread Counter */}
+                                            {(conv.unreadCounts?.[currentUser?.id || ''] || 0) > 0 && (
+                                                <div className="w-5 h-5 rounded-full bg-[#e9c49a] text-black text-[10px] font-bold flex items-center justify-center">
+                                                    {conv.unreadCounts?.[currentUser?.id || '']}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -538,55 +632,106 @@ const Message = () => {
                         <Plus className="w-5 h-5 mr-3" /> New Frequency
                     </Button>
                 </div>
+
+                {/* Mobile Bottom Nav - Only for List View */}
+                {isMobile && view === 'list' && (
+                    <div className="fixed bottom-0 left-0 right-0 h-16 bg-[#080808]/90 backdrop-blur-md border-t border-white/5 flex items-center justify-around z-50 pb-safe">
+                        <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-white/50 hover:text-white transition-colors">
+                            <Home className="w-5 h-5" />
+                            <span className="text-[9px] font-medium tracking-wide">Home</span>
+                        </button>
+                        <button onClick={() => navigate('/explore')} className="flex flex-col items-center gap-1 text-white/50 hover:text-white transition-colors">
+                            <Search className="w-5 h-5" />
+                            <span className="text-[9px] font-medium tracking-wide">Explore</span>
+                        </button>
+                        <button className="flex flex-col items-center gap-1 text-[#e9c49a]">
+                            <MessageCircle className="w-5 h-5" />
+                            <span className="text-[9px] font-medium tracking-wide">Chats</span>
+                        </button>
+                        <button onClick={() => navigate('/profile')} className="flex flex-col items-center gap-1 text-white/50 hover:text-white transition-colors">
+                            <Avatar className="w-6 h-6 border border-white/10">
+                                <AvatarImage src={currentUser?.photoURL} />
+                                <AvatarFallback>{currentUser?.fullName?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-[9px] font-medium tracking-wide">Profile</span>
+                        </button>
+                    </div>
+                )}
             </motion.div>
 
             {/* Chat Area (Right Panel) */}
             <motion.div
                 className={cn(
-                    "flex-1 flex flex-col bg-black/40 backdrop-blur-2xl relative z-10 transition-all duration-300",
-                    isMobile ? (view === 'chat' ? "fixed inset-0 z-50" : "hidden") : "flex"
+                    "flex-1 flex flex-col bg-[#050505] relative transition-all duration-300",
+                    isMobile ? (view === 'chat' ? "fixed inset-0 z-[200]" : "hidden") : "flex"
                 )}
             >
                 {selectedConv ? (
                     <>
                         {/* Chat Header */}
-                        <div className="h-[100px] flex items-center justify-between px-8 border-b border-[#e9c49a]/10 bg-black/20">
-                            <div className="flex items-center gap-5">
-                                {isMobile && (
-                                    <button onClick={() => setView('list')} className="p-2 -ml-2 text-white/50 hover:text-white">
-                                        <ArrowLeft className="w-6 h-6" />
-                                    </button>
-                                )}
-                                <Avatar className="w-12 h-12 ring-2 ring-[#e9c49a]/20">
-                                    <AvatarImage src={selectedConv.otherUser.photoURL} />
-                                    <AvatarFallback>{selectedConv.otherUser.fullName?.[0]}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <h2 className="text-xl font-light text-white tracking-wide flex items-center gap-2">
-                                        {selectedConv.otherUser.fullName}
-                                    </h2>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                                        <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Active Now</span>
+                        {/* Chat Header */}
+                        <div className={cn(
+                            "flex items-center justify-between px-6 py-4 border-b border-[#e9c49a]/10 bg-black/40 backdrop-blur-xl absolute top-0 left-0 right-0 z-20",
+                            isMobile ? "h-[80px] pt-8" : "h-[100px]"
+                        )}>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setView('list')}
+                                    className={cn(
+                                        "p-2 -ml-2 text-white/50 hover:text-white transition-colors rounded-full active:bg-white/10",
+                                        !isMobile && "hidden"
+                                    )}
+                                >
+                                    <ArrowLeft className="w-6 h-6" />
+                                </button>
+
+                                <div className="flex items-center gap-3" onClick={() => navigate(`/@${selectedConv.otherUser.fullName}`)}>
+                                    <div className="relative">
+                                        <Avatar className="w-10 h-10 md:w-12 md:h-12 ring-2 ring-[#e9c49a]/20">
+                                            <AvatarImage src={selectedConv.otherUser.photoURL} />
+                                            <AvatarFallback>{selectedConv.otherUser.fullName?.[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className={cn("absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black",
+                                            formatLastSeen(selectedConv.otherUser.lastSeen) === 'Active Now' ? "bg-emerald-500" : "bg-white/20"
+                                        )} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg md:text-xl font-medium text-white tracking-wide flex items-center gap-2">
+                                            {selectedConv.otherUser.fullName}
+                                            <Heart className="w-3 h-3 text-[#e9c49a] fill-current" />
+                                        </h2>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                                                {isOtherUserTyping ? (
+                                                    <span className="text-[#e9c49a] animate-pulse">Typing...</span>
+                                                ) : (
+                                                    formatLastSeen(selectedConv.otherUser.lastSeen)
+                                                )}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <button className="w-10 h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                    <Phone className="w-5 h-5" />
+                            <div className="flex items-center gap-1 md:gap-2">
+                                <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
+                                    <Phone className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
-                                <button className="w-10 h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                    <VideoIcon className="w-5 h-5" />
+                                <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
+                                    <VideoIcon className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
-                                <button className="w-10 h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                    <MoreVertical className="w-5 h-5" />
+                                <button className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
+                                    <MoreVertical className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
                             </div>
                         </div>
 
                         {/* Messages Feed */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth no-scrollbar relative">
+                        {/* Messages Feed */}
+                        <div className={cn(
+                            "flex-1 overflow-y-auto space-y-6 scroll-smooth no-scrollbar relative",
+                            isMobile ? "p-4 pt-[100px] pb-[100px]" : "p-8 pt-[120px] pb-[100px]"
+                        )}>
                             {/* Ambient background glow in chat */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-[#e9c49a]/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -631,6 +776,20 @@ const Message = () => {
                                                     isMe ? "text-right" : "text-left"
                                                 )}>
                                                     {formatTime(msg.createdAt)}
+                                                    {isMe && (
+                                                        <span className="ml-1 inline-flex items-center">
+                                                            {msg.read ? (
+                                                                <CheckCheck className="w-3 h-3 text-blue-400" />
+                                                            ) : (
+                                                                <CheckCheck className="w-3 h-3 text-white/30" />
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                    {isMe && msg.read && idx === messages.length - 1 && (
+                                                        <span className="block text-[8px] text-white/20 text-right mt-0.5">
+                                                            Seen {formatTime(msg.createdAt)} {/* Ideally readAt but using createdAt fallback for now */}
+                                                        </span>
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>
@@ -638,47 +797,84 @@ const Message = () => {
                                 );
                             })}
                             <div ref={messagesEndRef} />
+
+                            {/* Typing Indicator */}
+                            <AnimatePresence>
+                                {isOtherUserTyping && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute bottom-24 left-8 bg-[#1a1a1a] border border-[#e9c49a]/20 px-4 py-2 rounded-full flex items-center gap-2 shadow-lg z-20"
+                                    >
+                                        <Avatar className="w-5 h-5 rounded-full">
+                                            <AvatarImage src={selectedConv.otherUser.photoURL} />
+                                            <AvatarFallback>{selectedConv.otherUser.fullName[0]}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex gap-1">
+                                            <motion.div animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-1.5 h-1.5 bg-[#e9c49a] rounded-full" />
+                                            <motion.div animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-[#e9c49a] rounded-full" />
+                                            <motion.div animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-[#e9c49a] rounded-full" />
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-6 pt-0 bg-transparent">
-                            <div className="rounded-[30px] bg-[#0f0f0f]/90 border border-[#e9c49a]/20 backdrop-blur-3xl p-2 pl-6 flex items-center gap-4 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                                <button className="p-2 rounded-full text-white/30 hover:text-[#e9c49a] transition-colors">
+                        <div className={cn(
+                            "p-4 pt-2 bg-[#050505]/80 backdrop-blur-xl absolute bottom-0 left-0 right-0 z-20 border-t border-white/5",
+                            isMobile ? "pb-8 mb-[env(safe-area-inset-bottom)]" : "pb-8"
+                        )}>
+                            <div className="max-w-4xl mx-auto flex items-end gap-3">
+                                <button className="p-3 mb-1 rounded-full text-white/40 hover:text-[#e9c49a] hover:bg-white/5 transition-colors">
                                     <Plus className="w-6 h-6" />
                                 </button>
 
-                                <input
-                                    type="text"
-                                    value={messageInput}
-                                    onChange={(e) => setMessageInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                                    placeholder="Type a message..."
-                                    className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 font-light text-lg h-12"
-                                />
+                                <div className="flex-1 bg-[#1a1a1a]/50 border border-white/10 rounded-[24px] p-1 px-2 flex items-center shadow-inner min-h-[50px]">
+                                    <input
+                                        type="text"
+                                        value={messageInput}
+                                        onChange={async (e) => {
+                                            setMessageInput(e.target.value);
+                                            // Typing Logic
+                                            if (!selectedConv?.id || !currentUser?.id) return;
 
-                                <div className="flex items-center gap-1 pr-2">
-                                    <button className="p-2.5 rounded-full text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                        <Smile className="w-6 h-6" />
-                                    </button>
-                                    <button className="p-2.5 rounded-full text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                        <Mic className="w-6 h-6" />
-                                    </button>
+                                            if (!isLocalTyping) {
+                                                setIsLocalTyping(true);
+                                                await updateDoc(doc(db, "conversations", selectedConv.id), {
+                                                    [`typing.${currentUser.id}`]: true
+                                                });
+                                            }
 
-                                    {messageInput.trim() ? (
-                                        <motion.button
-                                            initial={{ scale: 0.8 }}
-                                            animate={{ scale: 1 }}
-                                            onClick={handleSendMessage}
-                                            className="w-12 h-12 ml-2 rounded-full bg-[#e9c49a] flex items-center justify-center text-black shadow-[0_0_20px_rgba(233,196,154,0.4)] hover:scale-105 active:scale-95 transition-all"
-                                        >
-                                            <Send className="w-5 h-5 ml-0.5" />
-                                        </motion.button>
-                                    ) : (
-                                        <button className="p-2.5 rounded-full text-white/30 hover:text-[#e9c49a] hover:bg-white/5 transition-all">
-                                            <ImageIcon className="w-6 h-6" />
-                                        </button>
-                                    )}
+                                            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+                                            typingTimeoutRef.current = setTimeout(async () => {
+                                                setIsLocalTyping(false);
+                                                await updateDoc(doc(db, "conversations", selectedConv.id), {
+                                                    [`typing.${currentUser.id}`]: false
+                                                });
+                                            }, 2000);
+                                        }}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                        placeholder="Type a message..."
+                                        className="flex-1 bg-transparent border-none outline-none text-base text-white placeholder:text-white/20 px-4 py-3 h-auto max-h-32"
+                                    />
+                                    <button className="p-2 text-white/40 hover:text-[#e9c49a]">
+                                        <Smile className="w-5 h-5" />
+                                    </button>
                                 </div>
+
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={!messageInput.trim()}
+                                    className={cn(
+                                        "p-3 mb-1 rounded-full bg-[#e9c49a] text-black shadow-lg hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 disabled:bg-white/10 disabled:text-white/20",
+                                        messageInput.trim() ? "translate-y-0 opacity-100" : "opacity-50"
+                                    )}
+                                >
+                                    {messageInput.trim() ? <Send className="w-5 h-5 ml-0.5" /> : <Mic className="w-5 h-5" />}
+                                </button>
                             </div>
                         </div>
                     </>

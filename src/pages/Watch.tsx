@@ -42,6 +42,26 @@ import { doc, getDoc, collection, getDocs, query, limit, where, updateDoc, incre
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import ReactPlayer from "react-player";
+
+interface TheaterContent {
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string;
+    rating?: string;
+    year?: string;
+    genre?: string;
+    runtime?: string;
+    type?: 'movie' | 'series';
+    Type?: 'movie' | 'series';
+    videoUrl?: string;
+    collectionName?: string;
+    views?: number;
+    likes?: number;
+    dislikes?: number;
+    createdAt?: any;
+}
 
 export default function Watch() {
     const { user: userData } = useOutletContext<{ user: any }>();
@@ -50,13 +70,18 @@ export default function Watch() {
     const artifactId = searchParams.get("id");
     const artifactName = searchParams.get("name");
 
-    const [videoData, setVideoData] = useState<any>(null);
+    const [videoData, setVideoData] = useState<TheaterContent | null>(null);
     const [nextSequences, setNextSequences] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [videoAspectRatio, setVideoAspectRatio] = useState<number>(16 / 9);
+    const [error, setError] = useState<string | null>(null);
+    const [isExternalStream, setIsExternalStream] = useState(false);
+    const [selectedServer, setSelectedServer] = useState("Server 1");
+    const [activeSeason, setActiveSeason] = useState(1);
+    const [activeEpisode, setActiveEpisode] = useState(1);
+    const [seasonData, setSeasonData] = useState<any>(null);
 
     // Video State
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const playerRef = useRef<ReactPlayer>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [playing, setPlaying] = useState(true);
     const [played, setPlayed] = useState(0);
@@ -67,7 +92,7 @@ export default function Watch() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
     const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(true);
-    const controlsTimeoutRef = useRef<any>(null);
+    const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // 1. Auth Observer
     useEffect(() => {
@@ -90,26 +115,49 @@ export default function Watch() {
 
         const fetchData = async () => {
             setLoading(true);
+            setIsExternalStream(false);
+
             try {
-                if (artifactId) {
+                // Check if it's an IMDb ID (External Streaming)
+                if (artifactId?.startsWith('tt')) {
+                    const OMDB_API_KEY = "93272d7a";
+                    const detailRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${artifactId}`);
+                    const details = await detailRes.json();
+
+                    if (details.Response === "True") {
+                        setVideoData({
+                            id: artifactId,
+                            title: details.Title,
+                            description: details.Plot,
+                            imageUrl: details.Poster,
+                            rating: details.imdbRating,
+                            year: details.Year,
+                            genre: details.Genre,
+                            runtime: details.Runtime,
+                            type: details.Type as 'movie' | 'series',
+                            Type: details.Type as 'movie' | 'series'
+                        });
+                        setIsExternalStream(true);
+                    } else {
+                        setError("Neural sequence not found in global archive");
+                    }
+                } else if (artifactId) {
                     const collections = ["gallery_videos", "gallery_images", "mood_content", "shorts", "happy_tracks", "sad_tracks"];
-                    let foundDocData = null;
+                    let foundDocData: TheaterContent | null = null;
 
                     for (const collName of collections) {
                         try {
-                            // First attempt: Direct Document ID fetch
                             const directDoc = await getDoc(doc(db, collName, artifactId));
                             if (directDoc.exists()) {
-                                foundDocData = { id: directDoc.id, collectionName: collName, ...directDoc.data() };
+                                foundDocData = { id: directDoc.id, collectionName: collName, ...directDoc.data() } as TheaterContent;
                                 break;
                             }
 
-                            // Second attempt: Search by 'id' field (resilience for custom amora-xxx IDs)
                             const q = query(collection(db, collName), where("id", "==", artifactId), limit(1));
                             const querySnap = await getDocs(q);
                             if (!querySnap.empty) {
                                 const d = querySnap.docs[0];
-                                foundDocData = { id: d.id, collectionName: collName, ...d.data() };
+                                foundDocData = { id: d.id, collectionName: collName, ...d.data() } as TheaterContent;
                                 break;
                             }
                         } catch (e) {
@@ -120,18 +168,10 @@ export default function Watch() {
                     if (foundDocData) {
                         setVideoData(foundDocData);
                     } else {
-                        // Final Fallback: Site Hero
-                        const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                        if (heroDoc.exists()) {
-                            const data = heroDoc.data();
-                            // Only set hero if it matches the requested artifactId or if we really have no choice
-                            // But usually, if they asked for an ID and it's not found, we show the hero
-                            setVideoData({ id: 'hero', ...data });
-                        }
+                        setError("Artifact data could not be retrieved from neural storage");
                     }
                 } else {
-                    const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                    if (heroDoc.exists()) setVideoData({ id: 'hero', ...heroDoc.data() });
+                    setError("Sequence identifier missing");
                 }
 
                 // Fetch next sequences for sidebar
@@ -147,6 +187,25 @@ export default function Watch() {
 
         fetchData();
     }, [artifactId]);
+
+    // Fetch Season Data
+    useEffect(() => {
+        const fetchSeason = async () => {
+            if (videoData?.type === "series" && artifactId) {
+                try {
+                    const OMDB_API_KEY = "93272d7a";
+                    const res = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${artifactId}&Season=${activeSeason}`);
+                    const data = await res.json();
+                    if (data.Response === "True") {
+                        setSeasonData(data);
+                    }
+                } catch (e) {
+                    console.error("Season fetch error:", e);
+                }
+            }
+        };
+        fetchSeason();
+    }, [videoData?.id, activeSeason]);
 
     // Update view count on load
     useEffect(() => {
@@ -173,20 +232,6 @@ export default function Watch() {
 
     // 4. Playback Pulse & Keyboard Controls
     useEffect(() => {
-        if (!loading && videoRef.current) {
-            const playVideo = async () => {
-                try {
-                    videoRef.current?.load();
-                    await videoRef.current?.play();
-                    setPlaying(true);
-                } catch (err) {
-                    console.warn("Autoplay transition restricted:", err);
-                    setPlaying(false);
-                }
-            };
-            playVideo();
-        }
-
         const handleKeyDown = (e: KeyboardEvent) => {
             // Avoid triggers if user is typing in search or input
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -194,33 +239,31 @@ export default function Watch() {
             switch (e.code) {
                 case "Space":
                     e.preventDefault();
-                    handleTogglePlay();
+                    setPlaying(prev => !prev);
                     break;
                 case "KeyK":
-                    handleTogglePlay();
+                    setPlaying(prev => !prev);
                     break;
                 case "ArrowLeft":
-                    if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
+                    if (playerRef.current) {
+                        const currentTime = playerRef.current.getCurrentTime() || 0;
+                        playerRef.current.seekTo(Math.max(0, currentTime - 5));
+                    }
                     break;
                 case "ArrowRight":
-                    if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 5);
+                    if (playerRef.current) {
+                        const currentTime = playerRef.current.getCurrentTime() || 0;
+                        playerRef.current.seekTo(currentTime + 5);
+                    }
                     break;
                 case "ArrowUp":
                     e.preventDefault();
-                    setVolume(prev => {
-                        const newVol = Math.min(1, prev + 0.1);
-                        if (videoRef.current) videoRef.current.volume = newVol;
-                        return newVol;
-                    });
+                    setVolume(prev => Math.min(1, prev + 0.1));
                     setMuted(false);
                     break;
                 case "ArrowDown":
                     e.preventDefault();
-                    setVolume(prev => {
-                        const newVol = Math.max(0, prev - 0.1);
-                        if (videoRef.current) videoRef.current.volume = newVol;
-                        return newVol;
-                    });
+                    setVolume(prev => Math.max(0, prev - 0.1));
                     break;
                 case "KeyM":
                     setMuted(prev => !prev);
@@ -245,15 +288,7 @@ export default function Watch() {
     }, []);
 
     const handleTogglePlay = () => {
-        if (videoRef.current) {
-            if (videoRef.current.paused) {
-                videoRef.current.play();
-                setPlaying(true);
-            } else {
-                videoRef.current.pause();
-                setPlaying(false);
-            }
-        }
+        setPlaying(prev => !prev);
     };
 
     const handleVideoEnd = () => {
@@ -267,16 +302,9 @@ export default function Watch() {
         }
     };
 
-    const handleTimeUpdate = () => {
-        if (videoRef.current) {
-            setPlayed(videoRef.current.currentTime / videoRef.current.duration);
-        }
-    };
-
-    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        if (videoRef.current) {
-            videoRef.current.currentTime = val * videoRef.current.duration;
+    const handleSeek = (val: number) => {
+        if (playerRef.current) {
+            playerRef.current.seekTo(val);
             setPlayed(val);
         }
     };
@@ -285,14 +313,6 @@ export default function Watch() {
         setShowControls(true);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
-    };
-
-    const handleLoadedMetadata = () => {
-        if (videoRef.current) {
-            const ratio = videoRef.current.videoWidth / videoRef.current.videoHeight;
-            setVideoAspectRatio(ratio);
-            setDuration(videoRef.current.duration);
-        }
     };
 
     const handleToggleFullscreen = () => {
@@ -345,6 +365,26 @@ export default function Watch() {
         );
     }
 
+    if (error || !videoData) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-8 p-10 text-center">
+                <div className="w-24 h-24 rounded-full bg-[#e9c49a]/5 border border-[#e9c49a]/10 flex items-center justify-center">
+                    <MonitorPlay className="w-10 h-10 text-[#e9c49a]/20" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-3xl font-display font-light text-white italic tracking-tighter uppercase">NEURAL VOID DETECTED</h2>
+                    <p className="text-[#e9c49a]/40 text-[10px] font-black uppercase tracking-[0.4em]">{error || "The requested sequence is currently unreachable"}</p>
+                </div>
+                <Button
+                    onClick={() => navigate('/')}
+                    className="h-14 px-10 rounded-2xl bg-[#e9c49a] text-black hover:bg-white transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                >
+                    RETURN TO DASHBOARD
+                </Button>
+            </div>
+        );
+    }
+
     const displayTitle = videoData?.title || artifactName || "unknown";
     const artifactHandle = displayTitle.toUpperCase();
 
@@ -385,11 +425,11 @@ export default function Watch() {
                                 </button>
 
                                 <button
-                                    onClick={() => navigate('/dashboard')}
+                                    onClick={() => isExternalStream ? navigate(`/details/${artifactId}`) : navigate(-1)}
                                     className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/10 hover:border-[#e9c49a]/30 transition-all text-[11px] font-bold uppercase tracking-widest text-white/40 hover:text-[#e9c49a]"
                                 >
-                                    <LayoutGrid className="w-4 h-4" />
-                                    Back to Dashboard
+                                    <ChevronLeft className="w-4 h-4" />
+                                    Return to Details
                                 </button>
                             </div>
                         </div>
@@ -406,151 +446,263 @@ export default function Watch() {
                                 )}
                                 onMouseMove={handleMouseMove}
                             >
-                                <video
-                                    key={videoData?.videoUrl}
-                                    ref={videoRef}
-                                    src={videoData?.videoUrl}
-                                    autoPlay
-                                    muted={muted}
-                                    playsInline
-                                    className="w-full h-full object-cover lg:object-contain"
-                                    onTimeUpdate={handleTimeUpdate}
-                                    onDurationChange={() => setDuration(videoRef.current?.duration || 0)}
-                                    onLoadedMetadata={handleLoadedMetadata}
-                                    onEnded={handleVideoEnd}
-                                    onClick={handleTogglePlay}
-                                />
+                                {isExternalStream ? (
+                                    <div className="absolute inset-0 w-full h-full bg-black">
+                                        <iframe
+                                            key={`${selectedServer}-${activeSeason}-${activeEpisode}`}
+                                            src={
+                                                selectedServer === "Server 1"
+                                                    ? `https://vidsrc.to/embed/${(videoData?.type === 'series' || videoData?.Type === 'series') ? 'tv' : 'movie'}/${artifactId}${(videoData?.type === 'series' || videoData?.Type === 'series') ? `/${activeSeason}/${activeEpisode}` : ''}`
+                                                    : selectedServer === "Server 2"
+                                                        ? `https://vidsrc.xyz/embed/${(videoData?.type === 'series' || videoData?.Type === 'series') ? 'tv' : 'movie'}/${artifactId}${(videoData?.type === 'series' || videoData?.Type === 'series') ? `/${activeSeason}/${activeEpisode}` : ''}`
+                                                        : `https://embed.su/embed/${(videoData?.type === 'series' || videoData?.Type === 'series') ? 'tv' : 'movie'}/${artifactId}${(videoData?.type === 'series' || videoData?.Type === 'series') ? `/${activeSeason}/${activeEpisode}` : ''}`
+                                            }
+                                            className="w-full h-full"
+                                            allowFullScreen
+                                            frameBorder="0"
+                                            allow="autoplay; encrypted-media"
+                                        />
 
-                                {/* Custom Video Controls Layer */}
-                                <div className={cn(
-                                    "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8 transition-opacity duration-300",
-                                    showControls || !playing ? "opacity-100" : "opacity-0"
-                                )}>
-                                    <div className="space-y-6">
-                                        {/* Progress Bar - Amora Gradient Style */}
-                                        <div className="relative h-1 bg-white/10 rounded-full group/seek cursor-pointer" onClick={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            const x = e.clientX - rect.left;
-                                            const val = x / rect.width;
-                                            if (videoRef.current) videoRef.current.currentTime = val * videoRef.current.duration;
-                                        }}>
-                                            <div
-                                                className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#e9c49a] rounded-full"
-                                                style={{ width: `${played * 100}%` }}
-                                            />
-                                            <div
-                                                className="absolute top-1/2 -ml-2 -mt-2 w-4 h-4 bg-[#e9c49a] rounded-full shadow-[0_0_15px_rgba(233,196,154,0.5)] opacity-0 group-hover/seek:opacity-100 transition-opacity"
-                                                style={{ left: `${played * 100}%` }}
-                                            />
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-6">
-                                                <button onClick={handleTogglePlay} className="hover:scale-110 transition-transform text-[#e9c49a]">
-                                                    {playing ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                                        {/* Server Selector Overlay (Custom UI) */}
+                                        <div className="absolute top-4 right-4 flex gap-2 z-50">
+                                            {["Server 1", "Server 2", "Server 3"].map((server) => (
+                                                <button
+                                                    key={server}
+                                                    onClick={() => setSelectedServer(server)}
+                                                    className={cn(
+                                                        "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all backdrop-blur-md border shadow-2xl",
+                                                        selectedServer === server
+                                                            ? "bg-[#e9c49a] text-black border-[#e9c49a]"
+                                                            : "bg-black/60 text-white/60 border-white/10 hover:bg-white/20 hover:border-white/30"
+                                                    )}
+                                                >
+                                                    {server}
                                                 </button>
-                                                <div className="text-[11px] font-bold text-[#e9c49a]/60 tracking-wider">
-                                                    {formatTime(played * duration)} / {formatTime(duration)}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-6">
-                                                <div className="flex items-center gap-4">
-                                                    <button onClick={() => setMuted(!muted)}>
-                                                        {muted ? <VolumeX className="w-5 h-5 text-white/20" /> : <Volume2 className="w-5 h-5 text-[#e9c49a]" />}
-                                                    </button>
-                                                    <button><Maximize2 className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" /></button>
-                                                    <button><Settings className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" /></button>
-                                                    <button onClick={handleToggleFullscreen}>
-                                                        {isFullscreen ? <Maximize2 className="w-5 h-5 text-[#e9c49a] drop-shadow-[0_0_8px_#e9c49a]" /> : <Maximize className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" />}
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            ))}
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        <ReactPlayer
+                                            ref={playerRef}
+                                            url={videoData?.videoUrl}
+                                            playing={playing}
+                                            muted={muted}
+                                            volume={volume}
+                                            width="100%"
+                                            height="100%"
+                                            playsinline
+                                            onProgress={(state) => setPlayed(state.played)}
+                                            onDuration={(d) => setDuration(d)}
+                                            onEnded={handleVideoEnd}
+                                            onClickPreview={handleTogglePlay}
+                                            style={{ objectFit: 'cover' }}
+                                        />
+
+                                        {/* Custom Video Controls Layer */}
+                                        <div className={cn(
+                                            "absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8 transition-opacity duration-300",
+                                            showControls || !playing ? "opacity-100" : "opacity-0"
+                                        )}>
+                                            <div className="space-y-6">
+                                                {/* Progress Bar - Amora Gradient Style */}
+                                                <div className="relative h-1 bg-white/10 rounded-full group/seek cursor-pointer" onClick={(e) => {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    const x = e.clientX - rect.left;
+                                                    const val = x / rect.width;
+                                                    handleSeek(val);
+                                                }}>
+                                                    <div
+                                                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#e9c49a] via-[#8b6544] to-[#e9c49a] rounded-full"
+                                                        style={{ width: `${played * 100}%` }}
+                                                    />
+                                                    <div
+                                                        className="absolute top-1/2 -ml-2 -mt-2 w-4 h-4 bg-[#e9c49a] rounded-full shadow-[0_0_15px_rgba(233,196,154,0.5)] opacity-0 group-hover/seek:opacity-100 transition-opacity"
+                                                        style={{ left: `${played * 100}%` }}
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-6">
+                                                        <button onClick={handleTogglePlay} className="hover:scale-110 transition-transform text-[#e9c49a]">
+                                                            {playing ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+                                                        </button>
+                                                        <div className="text-[11px] font-bold text-[#e9c49a]/60 tracking-wider">
+                                                            {formatTime(played * duration)} / {formatTime(duration)}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <button onClick={() => setMuted(!muted)}>
+                                                                {muted ? <VolumeX className="w-5 h-5 text-white/20" /> : <Volume2 className="w-5 h-5 text-[#e9c49a]" />}
+                                                            </button>
+                                                            <button><Maximize2 className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" /></button>
+                                                            <button><Settings className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" /></button>
+                                                            <button onClick={handleToggleFullscreen}>
+                                                                {isFullscreen ? <Maximize2 className="w-5 h-5 text-[#e9c49a] drop-shadow-[0_0_8px_#e9c49a]" /> : <Maximize className="w-5 h-5 text-white/20 hover:text-[#e9c49a]" />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </motion.div>
                         </div>
 
                         {/* Title Section */}
                         <div className="space-y-6">
-                            <div className="space-y-2">
-                                <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none uppercase">
-                                    {artifactHandle}
+                            <div className="space-y-4">
+                                <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight uppercase max-w-4xl">
+                                    {videoData?.title || artifactName || "unknown"}
                                 </h1>
-                                <div className="flex items-center gap-3 text-[12px] text-white/30 font-bold uppercase tracking-widest">
-                                    <span className="text-white/60">LOVE BUSTER</span>
-                                    <span>•</span>
-                                    <span className="text-white/60">LOVE BUSTER</span>
-                                    <span>•</span>
-                                    <span>{videoData?.views ? videoData.views.toLocaleString() : "0"} views</span>
-                                    <span>•</span>
-                                    <span>{formatDate(videoData?.createdAt)}</span>
+                                <div className="flex flex-wrap items-center gap-4 text-[10px] md:text-[12px] text-white/30 font-bold uppercase tracking-[0.2em]">
+                                    {isExternalStream ? (
+                                        <>
+                                            <span className="text-[#e9c49a] bg-[#e9c49a]/10 px-2 py-1 rounded">NEURAL STREAM ACTIVE</span>
+                                            {videoData?.rating && <span className="text-white/60">IMDb {videoData.rating}</span>}
+                                            {videoData?.year && <span>{videoData.year}</span>}
+                                            {videoData?.genre && <span className="text-[#e9c49a]/40">{videoData.genre}</span>}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-white/60">AMORA ARTIFACT</span>
+                                            <span>•</span>
+                                            <span>{videoData?.views ? videoData.views.toLocaleString() : "0"} views</span>
+                                            <span>•</span>
+                                            <span>{formatDate(videoData?.createdAt)}</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Action Row */}
-                            <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center bg-[#e9c49a]/5 border border-[#e9c49a]/10 rounded-xl overflow-hidden shadow-lg">
+                            <div className="flex flex-wrap items-center justify-between gap-6 pt-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-lg">
                                         <button
                                             onClick={handleLike}
-                                            className="flex items-center gap-2.5 px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors border-r border-[#e9c49a]/10"
+                                            className="flex items-center gap-2.5 px-6 py-4 hover:bg-[#e9c49a]/10 transition-colors border-r border-white/5"
                                         >
                                             <ThumbsUp className="w-5 h-5 text-[#e9c49a] fill-[#e9c49a]" />
-                                            <span className="text-[12px] font-bold uppercase tracking-wider text-[#e9c49a]">
+                                            <span className="text-[12px] font-black uppercase tracking-wider text-white/60">
                                                 {videoData?.likes ? videoData.likes.toLocaleString() : "Like"}
                                             </span>
                                         </button>
                                         <button
                                             onClick={handleDislike}
-                                            className="px-6 py-3 hover:bg-[#e9c49a]/10 transition-colors flex items-center gap-2"
+                                            className="px-6 py-4 hover:bg-white/5 transition-colors flex items-center gap-2"
                                         >
-                                            <ThumbsDown className="w-5 h-5 text-white/40 group-hover:text-[#e9c49a]" />
-                                            <span className="text-[12px] font-bold uppercase tracking-wider text-white/20">
-                                                {videoData?.dislikes ? videoData.dislikes.toLocaleString() : "Dislike"}
-                                            </span>
+                                            <ThumbsDown className="w-5 h-5 text-white/20" />
                                         </button>
                                     </div>
 
-                                    <button className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/5 hover:text-[#e9c49a] transition-all font-bold text-[12px] uppercase tracking-wider">
-                                        <Share className="w-4 h-4" /> Share
+                                    <button className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-black text-[11px] uppercase tracking-widest text-white/60">
+                                        <Share2 className="w-4 h-4" /> Share
                                     </button>
-                                    <button className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-[#e9c49a]/5 hover:text-[#e9c49a] transition-all font-bold text-[12px] uppercase tracking-wider">
-                                        <Download className="w-4 h-4" /> Download
+                                    <button className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-[#e9c49a]/10 border border-[#e9c49a]/20 text-[#e9c49a] hover:bg-[#e9c49a] hover:text-black transition-all font-black text-[11px] uppercase tracking-widest">
+                                        <Download className="w-4 h-4" /> Archive
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <button className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all">
-                                        <Info className="w-5 h-5 text-white/60" />
+                                <div className="flex items-center gap-3">
+                                    <button className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-white/40 transition-all">
+                                        <Plus className="w-5 h-5" />
                                     </button>
-                                    <button className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all">
-                                        <ListPlus className="w-5 h-5 text-white/60" />
-                                    </button>
-                                    <button className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#e9c49a]/10 hover:text-[#e9c49a] transition-all">
-                                        <MoreHorizontal className="w-5 h-5 text-white/60" />
+                                    <button className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 text-white/40 transition-all">
+                                        <MoreHorizontal className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Secondary Global Progress - Amora Themed */}
-                            <div className="pt-8 space-y-3">
-                                <div className="h-1 w-full bg-white/5 rounded-full relative overflow-hidden">
-                                    <div
-                                        className="absolute inset-y-0 left-0 bg-[#e9c49a]/10"
-                                        style={{ width: '100%' }}
-                                    />
-                                    <div
-                                        className="absolute inset-y-0 left-0 bg-[#e9c49a]"
-                                        style={{ width: '70%' }}
-                                    />
+                            {/* Movie Description Section */}
+                            <div className="pt-6 space-y-4">
+                                <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-[#e9c49a]">
+                                    <Sparkles className="w-4 h-4" />
+                                    Cinematic Metadata
                                 </div>
-                                <div className="flex justify-between text-[10px] text-[#e9c49a]/40 font-mono tracking-widest">
-                                    <span>AMORA SECTOR 7</span>
-                                    <span>RESYNC: 4:78</span>
-                                </div>
+                                <p className="text-white/50 text-base font-light leading-relaxed max-w-4xl">
+                                    {videoData?.description || "Initializing neural cinematic feed with optimized metadata synchronization..."}
+                                </p>
                             </div>
+
+                            {/* TV Series Season/Episode Picker */}
+                            {videoData?.type === "series" && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="pt-10 space-y-8"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-1.5 h-8 bg-[#e9c49a] rounded-full" />
+                                            <h3 className="text-xl font-black uppercase tracking-[0.2em] text-white">Neural Sequences</h3>
+                                        </div>
+
+                                        {/* Season Select */}
+                                        <div className="flex gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10">
+                                            {[1, 2, 3, 4, 5].map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => {
+                                                        setActiveSeason(s);
+                                                        setActiveEpisode(1);
+                                                    }}
+                                                    className={cn(
+                                                        "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                        activeSeason === s
+                                                            ? "bg-[#e9c49a] text-black shadow-lg"
+                                                            : "text-white/40 hover:text-white hover:bg-white/5"
+                                                    )}
+                                                >
+                                                    Season {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Episode Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
+                                        {seasonData?.Episodes?.map((ep: any) => (
+                                            <button
+                                                key={ep.Episode}
+                                                onClick={() => setActiveEpisode(parseInt(ep.Episode))}
+                                                className={cn(
+                                                    "group flex items-center gap-4 p-4 rounded-3xl border transition-all text-left",
+                                                    activeEpisode === parseInt(ep.Episode)
+                                                        ? "bg-[#e9c49a]/10 border-[#e9c49a]/30"
+                                                        : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-black transition-all",
+                                                    activeEpisode === parseInt(ep.Episode)
+                                                        ? "bg-[#e9c49a] text-black"
+                                                        : "bg-white/5 text-white/40 group-hover:bg-white/10"
+                                                )}>
+                                                    {ep.Episode.padStart(2, '0')}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={cn(
+                                                        "text-[11px] font-black uppercase tracking-wider truncate mb-1",
+                                                        activeEpisode === parseInt(ep.Episode) ? "text-[#e9c49a]" : "text-white/60"
+                                                    )}>
+                                                        {ep.Title}
+                                                    </div>
+                                                    <div className="text-[9px] font-bold text-white/20 uppercase tracking-widest">
+                                                        Released: {ep.Released}
+                                                    </div>
+                                                </div>
+                                                {activeEpisode === parseInt(ep.Episode) && (
+                                                    <div className="w-2 h-2 rounded-full bg-[#e9c49a] animate-pulse" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
                     </div>
 

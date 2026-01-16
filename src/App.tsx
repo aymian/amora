@@ -32,6 +32,7 @@ import HappyUpload from "./pages/admin/HappyUpload";
 import MoodsWatch from "./pages/MoodsWatch";
 import AIGuide from "./pages/AIGuide";
 import EmotionAI from "./pages/EmotionAI";
+import AI from "./pages/AI";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Happy from "./pages/Happy";
@@ -59,9 +60,11 @@ import WorkerProfile from "./pages/admin/workers/WorkerProfile";
 import Upload from "./pages/Upload";
 import ViewArtifact from "./pages/ViewArtifact";
 import Explore from "./pages/Explore";
+import Notifications from "./pages/Notifications";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Message from "./pages/Message";
 import CreateStory from "./pages/CreateStory";
+import Details from "./pages/Details";
 
 import { LiteModeProvider } from "@/contexts/LiteModeContext";
 import { OfflineFallback } from "@/components/layout/OfflineFallback";
@@ -98,6 +101,7 @@ const App = () => (
               <Route path="/images" element={<Gallery />} />
               <Route path="/short-videos" element={<ShortVideos />} />
               <Route path="/watch" element={<Watch />} />
+              <Route path="/details/:id" element={<Details />} />
               <Route path="/upgrade" element={<Upgrade />} />
               <Route path="/payment" element={<Payment />} />
               <Route path="/transactions" element={<Transactions />} />
@@ -106,13 +110,14 @@ const App = () => (
               <Route path="/moods-uploads" element={<MoodsUpload />} />
               <Route path="/happy-upload" element={<HappyUpload />} />
               <Route path="/moods-watch/:id" element={<MoodsWatch />} />
-              <Route path="/ai" element={<AIGuide />} />
+              <Route path="/ai" element={<AI />} />
               <Route path="/emotion-ai" element={<EmotionAI />} />
               <Route path="/happy" element={<Happy />} />
               <Route path="/sad" element={<Sad />} />
               <Route path="/updates" element={<Updates />} />
               <Route path="/help" element={<Help />} />
               <Route path="/upload" element={<Upload />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/history" element={<History />} />

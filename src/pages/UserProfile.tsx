@@ -113,8 +113,8 @@ export default function UserProfile() {
                 const requestQuery = query(
                     collection(db, "notifications"),
                     where("type", "==", "follow_request"),
-                    where("fromUserId", "==", authUser.uid),
-                    where("toUserId", "==", viewedUser.uid),
+                    where("senderId", "==", authUser.uid),
+                    where("recipientId", "==", viewedUser.uid),
                     where("status", "==", "pending")
                 );
                 const requestSnap = await getDocs(requestQuery);
@@ -183,10 +183,10 @@ export default function UserProfile() {
                 // Send follow request for private account
                 await addDoc(collection(db, "notifications"), {
                     type: "follow_request",
-                    fromUserId: currentUser.uid,
-                    fromUserName: currentUser.displayName || "Anonymous",
-                    fromUserPhoto: currentUser.photoURL || "",
-                    toUserId: user.uid,
+                    senderId: currentUser.uid,
+                    senderName: currentUser.displayName || currentUser.email?.split('@')[0] || "Anonymous",
+                    senderPhoto: currentUser.photoURL || "",
+                    recipientId: user.uid,
                     status: "pending",
                     createdAt: serverTimestamp()
                 });

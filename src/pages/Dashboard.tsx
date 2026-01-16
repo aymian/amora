@@ -40,7 +40,45 @@ export default function Dashboard() {
             if (authLoading || !userData) return;
 
             try {
-                // Fetch Gallery Data (Videos)
+                // Fetch OMDB Data for Hero Section
+                const OMDB_API_KEY = "93272d7a";
+                const searchTerms = ["Marvel", "Avengers", "Star Wars", "Batman", "John Wick"];
+                const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)];
+
+                // Fetch movies
+                const movieRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${randomTerm}&type=movie`);
+                const movieData = await movieRes.json();
+
+                // Fetch series for variety
+                const seriesRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=Succession&type=series`);
+                const seriesData = await seriesRes.json();
+
+                const combinedResults = [
+                    ...(movieData.Search || []),
+                    ...(seriesData.Search || [])
+                ].slice(0, 12);
+
+                // Fetch full details for each to get descriptions
+                const detailedHeroes = await Promise.all(
+                    combinedResults.map(async (item: any) => {
+                        const detailRes = await fetch(`https://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${item.imdbID}`);
+                        const details = await detailRes.json();
+                        return {
+                            id: item.imdbID,
+                            title: details.Title,
+                            description: details.Plot !== "N/A" ? details.Plot : "No description available.",
+                            imageUrl: details.Poster !== "N/A" ? details.Poster : "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80",
+                            year: details.Year,
+                            rating: details.imdbRating,
+                            genre: details.Genre,
+                            runtime: details.Runtime
+                        };
+                    })
+                );
+
+                setHeroes(detailedHeroes);
+
+                // Fetch Gallery Data (Videos) for New Releases
                 let videoItems: any[] = [];
                 try {
                     const q = query(collection(db, "gallery_videos"), orderBy("createdAt", "desc"), limit(20));
@@ -49,15 +87,6 @@ export default function Dashboard() {
                 } catch (e) {
                     console.warn("Archival gallery fetch failed:", e);
                 }
-
-                const heroDoc = await getDoc(doc(db, "site_content", "hero"));
-                const mainHero = heroDoc.exists() ? { id: 'main-hero', ...heroDoc.data() } : null;
-
-                const heroList = (mainHero ? [mainHero, ...videoItems] : videoItems)
-                    .filter((item: any) => item && (item.videoUrl || item.imageUrl))
-                    .slice(0, 5);
-
-                setHeroes(heroList);
                 setNewReleases(videoItems.slice(0, 6));
 
                 // Fetch Stories
@@ -80,13 +109,13 @@ export default function Dashboard() {
         fetchData();
     }, [userData, authLoading]);
 
-    // Auto-slide Timer (10 seconds)
+    // Auto-slide Timer (8 seconds)
     useEffect(() => {
         if (heroes.length <= 1) return;
 
         const timer = setInterval(() => {
             setCurrentHeroIndex((prev) => (prev + 1) % heroes.length);
-        }, 10000);
+        }, 8000);
 
         return () => clearInterval(timer);
     }, [heroes.length]);
@@ -164,86 +193,111 @@ export default function Dashboard() {
                 </div>
             </section>
             {/* Dynamic Hero Banner Section */}
-            <section className="relative group rounded-[40px] overflow-hidden aspect-[21/9] flex items-center p-8 lg:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] bg-black">
+            <section className="relative group rounded-[40px] overflow-hidden aspect-[2/3] md:aspect-[21/9] flex items-end md:items-center p-6 sm:p-10 md:p-16 border border-white/5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] bg-black/40">
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={heroData?.videoUrl || 'static'}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1 }}
+                        key={heroData?.id || 'static'}
+                        initial={{ opacity: 0, scale: 1.1 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
                         className="absolute inset-0 z-0"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent z-10" />
-                        {heroData?.videoUrl ? (
-                            <video
-                                src={heroData.videoUrl}
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <img
-                                src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80"
-                                className="w-full h-full object-cover brightness-50"
-                                alt="Cinema Hero"
-                            />
-                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent md:bg-gradient-to-r md:from-[#050505] md:via-[#050505]/60 md:to-transparent z-10" />
+                        <img
+                            src={heroData?.imageUrl}
+                            className="w-full h-full object-cover brightness-[0.7] transition-all duration-1000 group-hover:scale-105"
+                            alt={heroData?.title || "Cinema Hero"}
+                        />
                     </motion.div>
                 </AnimatePresence>
 
-                <div className="relative z-20 max-w-2xl space-y-6">
+                <div className="relative z-20 max-w-2xl space-y-4 md:space-y-8 w-full mb-8 md:mb-0">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={heroData?.title || 'loading'}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ duration: 0.5 }}
-                            className="space-y-6"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="space-y-4 md:space-y-8"
                         >
-                            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-[#e9c49a]/10 border border-[#e9c49a]/20 text-[#e9c49a] text-[10px] uppercase tracking-[0.3em] font-bold">
-                                <Sparkles className="w-3.5 h-3.5" />
-                                {currentHeroIndex === 0 ? 'Featured Sequence' : 'Archival Resonance'}
+                            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#e9c49a]/20 border border-[#e9c49a]/30 text-[#e9c49a] text-[8px] md:text-[10px] uppercase tracking-[0.2em] font-black backdrop-blur-md">
+                                    <Sparkles className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                                    Featured Sequence
+                                </div>
+                                {heroData?.rating && (
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-[8px] md:text-[10px] uppercase tracking-widest font-black backdrop-blur-md">
+                                        IMDb {heroData.rating}
+                                    </div>
+                                )}
+                                {heroData?.year && (
+                                    <div className="inline-flex sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/40 text-[8px] md:text-[10px] uppercase tracking-widest font-black backdrop-blur-md">
+                                        {heroData.year}
+                                    </div>
+                                )}
                             </div>
-                            <div className="space-y-3">
-                                <h3 className="text-2xl lg:text-5xl font-display font-light leading-tight tracking-tight max-w-lg">
-                                    {heroData?.title || 'Initializing Cinema...'}
+
+                            <div className="space-y-3 md:space-y-4">
+                                <h3 className="text-4xl md:text-6xl font-display font-bold leading-[1.1] tracking-tighter text-white drop-shadow-2xl">
+                                    {heroData?.title || 'Synchronizing...'}
                                 </h3>
-                                <p className="text-white/50 text-xs lg:text-sm font-light leading-relaxed max-w-md line-clamp-2">
-                                    {heroData?.description || "Synchronizing with your personalized cinematic feed..."}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white/40 text-[9px] md:text-xs uppercase tracking-widest font-black">
+                                    <span className="text-[#e9c49a]/60">{heroData?.genre?.split(',')[0]}</span>
+                                    {heroData?.runtime !== "N/A" && (
+                                        <>
+                                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                                            <span>{heroData?.runtime}</span>
+                                        </>
+                                    )}
+                                </div>
+                                <p className="text-white/60 text-[11px] md:text-base font-light leading-relaxed max-w-lg line-clamp-2 md:line-clamp-none">
+                                    {heroData?.description || "Initializing neural cinematic interface..."}
                                 </p>
                             </div>
-                            <Button
-                                onClick={() => {
-                                    const videoId = heroData?.id || 'main-hero';
-                                    const videoName = heroData?.title || 'featured_sequence';
-                                    navigate(`/watch?name=${encodeURIComponent(videoName)}&id=${videoId}`);
-                                }}
-                                className="h-12 px-8 rounded-full bg-white text-black hover:bg-[#e9c49a] hover:text-black transition-all duration-500 font-bold group shadow-xl text-xs uppercase tracking-widest"
-                            >
-                                Watch Sequence
-                                <Play className="ml-2 w-4 h-4 fill-current" />
-                            </Button>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 pt-2">
+                                <Button
+                                    onClick={() => {
+                                        navigate(`/details/${heroData?.id}`);
+                                    }}
+                                    className="h-12 md:h-14 px-10 rounded-2xl bg-[#e9c49a] text-black hover:bg-white hover:scale-105 transition-all duration-300 font-black shadow-[0_20px_40px_-12px_rgba(233,196,154,0.3)] text-[10px] md:text-xs uppercase tracking-[0.2em]"
+                                >
+                                    Experience Now
+                                    <Play className="ml-3 w-4 md:w-5 h-4 md:h-5 fill-current" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-12 md:h-14 px-8 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white hover:text-black hover:border-white transition-all duration-300 font-bold text-[10px] md:text-xs uppercase tracking-widest"
+                                    onClick={() => toast.info("Added to Archive")}
+                                >
+                                    Add to Collection
+                                    <Heart className="ml-3 w-4 h-4" />
+                                </Button>
+                            </div>
                         </motion.div>
                     </AnimatePresence>
                 </div>
 
                 {/* Slide Indicators */}
-                <div className="absolute bottom-10 right-10 z-30 flex gap-3">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-16 md:bottom-16 md:translate-x-0 z-30 flex items-center gap-2">
                     {heroes.map((_, idx) => (
                         <div
                             key={idx}
                             onClick={() => setCurrentHeroIndex(idx)}
                             className={cn(
-                                "h-1 transition-all duration-500 rounded-full cursor-pointer",
-                                idx === currentHeroIndex ? "w-8 bg-[#e9c49a]" : "w-4 bg-white/20 hover:bg-white/40"
+                                "h-1.5 transition-all duration-500 rounded-full cursor-pointer",
+                                idx === currentHeroIndex
+                                    ? "w-10 bg-[#e9c49a] shadow-[0_0_15px_rgba(233,196,154,0.5)]"
+                                    : "w-4 bg-white/20 hover:bg-white/40"
                             )}
                         />
                     ))}
                 </div>
+
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#e9c49a]/5 to-transparent pointer-events-none opacity-50" />
             </section>
 
             {/* User Identity Phase */}
